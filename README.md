@@ -99,6 +99,14 @@ The runner sets `HTTP_PROXY`, `HTTPS_PROXY`, and lowercase equivalents, and clea
 
 HTTPS uses the client's normal end-to-end TLS connection. Plain HTTP forwarding intentionally preserves only Host and Connection request headers and Content-Type/Location response headers; it is intended for simple diagnostics. CONNECT idle timeout is 15 seconds; socket operations time out after 10 seconds. See [CLI reference](docs/CLI.md) for resource limits and outcomes.
 
+## Run a real agent
+
+Try the [local Ollama + GitHub walkthrough](docs/OLLAMA-WALKTHROUGH.md). A real Qwen model chooses two repository tools: Outfence permits metadata access and blocks the README until you change the policy. No API key is needed; an installed local model and internet access for the public tools are required. Model inference is deliberately outside proxy coverage.
+
+```sh
+python3 -m outfence run --policy examples/ollama-policy.json --timeout 300 -- python3 examples/ollama_agent.py
+```
+
 ## Read the result
 
 Reports contain destination host/port, decision, reason, connection status, timestamps, policy snapshot, and coverage limits. They contain no stored request paths, bodies, headers, environment values, or command output. Workload stdout/stderr remains visible in your terminal. Hostnames can still be sensitive; review reports before sharing.
@@ -118,8 +126,8 @@ Reports stay on your machine with owner-only file permissions. Use `--output NEW
 
 ```sh
 python -m pip install -r requirements-dev.txt
-ruff check outfence tests
-ruff format --check outfence tests
+ruff check outfence tests examples/ollama_agent.py
+ruff format --check outfence tests examples/ollama_agent.py
 python -m unittest discover -s tests -v
 python -m build --no-isolation
 ```

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "allow": [
+    {"host": "api.github.com", "port": 443},
+    {"host": "raw.githubusercontent.com", "port": 443}
+  ]
+}

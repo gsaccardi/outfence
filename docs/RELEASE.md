@@ -42,3 +42,7 @@ The public GitHub repository is created. Tagged releases and package-registry pu
 ## Local verification for this candidate
 
 On macOS / Python 3.13: 20 unit/integration tests passed, Ruff lint and format checks passed, wheel and source archive built, and the installed-package smoke test passed outside the checkout (init/check, enforce, observe, edited allow-all policy). Package inspection verified Apache-2.0 metadata, zero runtime dependencies, and exclusion of local reports/environment files. The hosted Linux/macOS CI matrix has not run yet.
+
+## Follow-up validation
+
+The macOS installed-demo timeout was traced to unnecessary reverse DNS during local HTTP-server binding. Loopback servers now skip that lookup, with a regression test guarding it. The [four-job CI run for the fix](https://github.com/gsaccardi/outfence/actions/runs/34688309142) passed on Linux/macOS and Python 3.10/3.13. The real Ollama agent walkthrough documents separate manual model/tool verification.

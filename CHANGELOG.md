@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a live Ollama/Qwen repository-research agent, with explicit proxied HTTPS tools, blocked/allowed policies, deterministic tests, and a reproducible walkthrough.
+
 - Replace the arrow-based identity with a minimal, monochrome split-ring symbol.
 - Skip reverse DNS during loopback server startup, preventing cold-process demo timeouts on macOS CI.
 - Add a regression check for DNS-free server startup and actionable smoke-test timeout output.

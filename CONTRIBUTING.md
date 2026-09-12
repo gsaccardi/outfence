@@ -11,13 +11,13 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 python -m pip install --no-build-isolation -e .
-ruff check outfence tests
-ruff format --check outfence tests
+ruff check outfence tests examples/ollama_agent.py
+ruff format --check outfence tests examples/ollama_agent.py
 python -m unittest discover -s tests -v
 python -m build --no-isolation
 ```
 
-Use `ruff format outfence tests` to format changes. To check packaging, install the built wheel into a fresh virtual environment and run `scripts/smoke_install.py` with that environment's Python. It exercises the installed command from outside the checkout.
+Use `ruff format outfence tests examples/ollama_agent.py` to format changes. To check packaging, install the built wheel into a fresh virtual environment and run `scripts/smoke_install.py` with that environment's Python. It exercises the installed command from outside the checkout.
 
 Tests must not require paid APIs or external services. Use local fixtures, explicit synthetic endpoint mappings, and destination-side assertions. Do not expand the public policy schema to allow the internal fixture bypass.
 
@@ -28,3 +28,5 @@ Explain the user-visible problem, the change, and how you verified it. Add regre
 Report normal bugs with the issue template. Follow [SECURITY.md](SECURITY.md) for sensitive findings. Treat contributors respectfully, focus criticism on the work, and do not post personal or confidential information.
 
 By submitting a contribution, you agree that it is provided under this repository's Apache-2.0 license. No additional CLA is required. Source files, tests, documentation, and generated artwork are included under that license; bundled third-party fonts are not distributed.
+
+The Ollama walkthrough has deterministic CI tests. Live model tests are manual and require an installed local model; do not add credentials, model downloads, or public API calls to CI.
