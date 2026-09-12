@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "allow": [
+    {"host": "model.example", "port": 80},
+    {"host": "retrieval.example", "port": 80}
+  ]
+}

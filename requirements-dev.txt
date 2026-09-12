@@ -1,0 +1,4 @@
+# Development tooling only; Outfence itself has no third-party runtime dependencies.
+build==1.6.1
+ruff==0.16.7
+setuptools==84.0.0

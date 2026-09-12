@@ -1,0 +1,90 @@
+{
+  "schema_version": "0.1-proposal",
+  "synthetic": true,
+  "run_id": "demo",
+  "mode": "enforce",
+  "started_at": "2026-09-12T10:00:00Z",
+  "finished_at": "2026-09-12T10:00:02Z",
+  "workload": {
+    "image": "agent-demo:local",
+    "image_digest": null,
+    "note": "Illustrative fixture; no workload was executed"
+  },
+  "policy": {
+    "version": 1,
+    "hash": null,
+    "snapshot": {
+      "network": {
+        "default": "deny",
+        "allow": [
+          {
+            "id": "model-api",
+            "host": "model.example",
+            "port": 443,
+            "protocol": "https"
+          }
+        ]
+      }
+    }
+  },
+  "runtime": {
+    "backend": "not-implemented",
+    "cli_version": "not-released"
+  },
+  "coverage": {
+    "status": "complete",
+    "scope": "synthetic example only",
+    "boundary": "one workload container",
+    "capture_method": "proposed proxy and network-denial collector",
+    "protocols": [
+      "http",
+      "https"
+    ],
+    "exclusions": [
+      "image pulls",
+      "host processes",
+      "remote tool downstream traffic",
+      "encrypted payloads"
+    ],
+    "dropped_events": 0,
+    "interrupted": false
+  },
+  "summary": {
+    "allowed": 1,
+    "blocked": 1,
+    "would_block": 0
+  },
+  "events": [
+    {
+      "time": "2026-09-12T10:00:01Z",
+      "host": "model.example",
+      "ip": null,
+      "port": 443,
+      "transport": "https",
+      "action": "allowed",
+      "rule": "model-api",
+      "reason": "exact_host_match",
+      "source": "synthetic",
+      "process": null,
+      "tool": null
+    },
+    {
+      "time": "2026-09-12T10:00:02Z",
+      "host": "telemetry.example",
+      "ip": null,
+      "port": 443,
+      "transport": "https",
+      "action": "blocked",
+      "rule": "default-deny",
+      "reason": "destination_not_allowed",
+      "source": "synthetic",
+      "process": null,
+      "tool": null
+    }
+  ],
+  "outcome": {
+    "status": "policy_violation",
+    "exit_code": 2
+  },
+  "workload_exit_code": 1
+}

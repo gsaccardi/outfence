@@ -1,0 +1,5 @@
+include LICENSE README.md CONTRIBUTING.md SECURITY.md CHANGELOG.md requirements-dev.txt
+recursive-include examples *.json *.yaml
+recursive-include docs *.md
+recursive-include brand *.md *.json *.svg *.png
+include scripts/smoke_install.py scripts/build_brand.py

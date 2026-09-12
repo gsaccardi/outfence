@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "outfence"
+dynamic = ["version"]
+description = "Inspect proxy-routed agent connections with local policies and offline reports"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "Outfence contributors"}]
+keywords = ["ai-agents", "proxy", "network-policy", "developer-tools"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Operating System :: POSIX",
+  "Operating System :: MacOS :: MacOS X",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/gsaccardi/outfence"
+Issues = "https://github.com/gsaccardi/outfence/issues"
+Changelog = "https://github.com/gsaccardi/outfence/blob/main/CHANGELOG.md"
+
+[project.scripts]
+outfence = "outfence.cli:main"
+
+[tool.setuptools]
+packages = ["outfence"]
+
+[tool.setuptools.dynamic]
+version = {attr = "outfence.__version__"}
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
