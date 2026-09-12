@@ -6,6 +6,7 @@ import http.client
 import ipaddress
 import select
 import socket
+import socketserver
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -18,7 +19,15 @@ def now():
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
 
-class Proxy(ThreadingHTTPServer):
+class LoopbackHTTPServer(ThreadingHTTPServer):
+    """Bind numerical loopback without HTTPServer's unused reverse-DNS lookup."""
+
+    def server_bind(self):
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
+
+class Proxy(LoopbackHTTPServer):
     daemon_threads = True
 
     def __init__(self, policy, mode, fixtures=None, max_events=10000):

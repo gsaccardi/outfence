@@ -3,12 +3,12 @@ import json
 import socket
 import tempfile
 import unittest
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from outfence.cli import main
 from outfence.core import Proxy, Service, load_policy, now, write_report
 from outfence.demo import Fixture, demo_requests
+from outfence.proxy import LoopbackHTTPServer as ThreadingHTTPServer
 
 POLICY = {
     "version": 1,

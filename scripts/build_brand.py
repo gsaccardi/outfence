@@ -1,85 +1,94 @@
-"""Generate original vector brand assets and matching high-resolution PNG exports.
-Requires Pillow for PNG export; uses system Arial or a supplied OUTFENCE_FONT_DIR.
-No network requests or third-party artwork. Run from any directory.
+"""Generate Outfence's vector-first identity and matching PNG exports.
+
+Requires Pillow and Arial system fonts, or OUTFENCE_FONT_DIR. All symbol geometry
+is original; no fonts or third-party artwork are bundled. SVG marks use true arcs.
 """
-from pathlib import Path
-import os
+
 import html
 import json
-from PIL import Image, ImageDraw, ImageFont
-ROOT=Path(__file__).resolve().parents[1]
-OUT=ROOT/'brand/assets'
-OUT.mkdir(parents=True,exist_ok=True)
-FONT=Path(os.environ.get('OUTFENCE_FONT_DIR','/System/Library/Fonts/Supplemental'))
-INK='#102B2A'; MINT='#A6F0CD'; PAPER='#F7F5EF'; MUTED='#526563'; LINE='#D6DDD5'; GREEN='#17664D'; RED='#A43135'; AMBER='#865500'
-SCALE=2
-class Canvas:
- def __init__(self,w,h,bg=None):
-  self.w=w;self.h=h;self.parts=[]
-  self.im=Image.new('RGBA',(w*SCALE,h*SCALE),(0,0,0,0));self.d=ImageDraw.Draw(self.im)
-  if bg:self.rect(0,0,w,h,bg)
- def rect(self,x,y,w,h,c,r=0):
-  self.parts.append(f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{r}" fill="{c}"/>')
-  self.d.rounded_rectangle((x*SCALE,y*SCALE,(x+w)*SCALE,(y+h)*SCALE),radius=r*SCALE,fill=c)
- def line(self,pts,c,width=8):
-  self.parts.append(f'<polyline points="'+ ' '.join(f'{x},{y}' for x,y in pts)+f'" fill="none" stroke="{c}" stroke-width="{width}" stroke-linecap="round" stroke-linejoin="round"/>')
-  p=[(int(x*SCALE),int(y*SCALE)) for x,y in pts]
-  self.d.line(p,fill=c,width=round(width*SCALE),joint='curve')
-  r=width*SCALE/2
-  for x,y in p:self.d.ellipse((x-r,y-r,x+r,y+r),fill=c)
- def circle(self,x,y,r,c):
-  self.parts.append(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{c}"/>')
-  self.d.ellipse(((x-r)*SCALE,(y-r)*SCALE,(x+r)*SCALE,(y+r)*SCALE),fill=c)
- def text(self,x,y,t,size=24,c=INK,bold=False,mono=False):
-  fn='Courier New.ttf' if mono else ('Arial Bold.ttf' if bold else 'Arial.ttf')
-  f=ImageFont.truetype(str(FONT/fn),round(size*SCALE))
-  family='Courier New, monospace' if mono else 'Arial, Helvetica, sans-serif'
-  self.parts.append(f'<text x="{x}" y="{y}" font-family="{family}" font-size="{size}" font-weight="{700 if bold else 400}" fill="{c}">{html.escape(t)}</text>')
-  self.d.text((x*SCALE,y*SCALE),t,font=f,fill=c,anchor='ls')
- def mark(self,x,y,size,base=INK,accent=INK):
-  def p(a,b):return (x+a*size/100,y+b*size/100)
-  self.line([p(66,18),p(22,18),p(22,82),p(66,82)],base,size*.085)
-  self.line([p(43,50),p(88,50)],accent,size*.085)
-  self.circle(*p(43,50),size*.068,accent)
-  self.line([p(77,39),p(88,50),p(77,61)],accent,size*.07)
- def save(self,name,title):
-  title=html.escape(title)
-  (OUT/f'{name}.svg').write_text(f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.w}" height="{self.h}" viewBox="0 0 {self.w} {self.h}" role="img" aria-labelledby="title"><title id="title">{title}</title>'+''.join(self.parts)+'</svg>')
-  self.im.resize((self.w,self.h),Image.Resampling.LANCZOS).save(OUT/f'{name}.png')
+import math
+import os
+from pathlib import Path
 
-for name,color in [('mark-ink',INK),('mark-white',PAPER)]:
- c=Canvas(256,256);c.mark(0,0,256,color,color);c.save(name,'Outfence boundary and outbound path symbol')
-c=Canvas(512,512,INK);c.mark(72,72,368,MINT,MINT);c.save('avatar','Outfence avatar')
-for name,bg,fg in [('wordmark-light',None,INK),('wordmark-dark',INK,PAPER)]:
- c=Canvas(760,180,bg);c.mark(8,20,140,fg,fg);c.text(180,123,'outfence',96,fg,True);c.save(name,'Outfence wordmark')
-c=Canvas(1600,560,INK)
-c.mark(64,42,88,MINT,MINT);c.text(168,104,'outfence',48,PAPER,True)
-c.text(80,258,'Know where your',76,PAPER,True);c.text(80,347,'agents connect.',76,PAPER,True)
-c.text(84,448,'Local policies. Reviewable evidence.',28,MINT)
-c.text(84,511,'LOCAL PROXY ALPHA  /  0.1.0a1',16,'#ADC4BD',mono=True)
-c.mark(1090,125,340,MINT,MINT);c.save('banner','Outfence — Know where your agents connect. Local proxy alpha.')
+from PIL import Image, ImageDraw, ImageFont
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / 'brand/assets'
+OUT.mkdir(parents=True, exist_ok=True)
+FONT = Path(os.environ.get('OUTFENCE_FONT_DIR', '/System/Library/Fonts/Supplemental'))
+INK, PAPER, ACCENT, MUTED = '#171917', '#FAFAF7', '#D9F378', '#656B63'
+SCALE = 3
+
+
+class Canvas:
+    def __init__(self, width, height, background=None):
+        self.width, self.height, self.parts = width, height, []
+        self.im = Image.new('RGBA', (width * SCALE, height * SCALE))
+        self.draw = ImageDraw.Draw(self.im)
+        if background:
+            self.rect(0, 0, width, height, background)
+
+    def rect(self, x, y, width, height, color):
+        self.parts.append(f'<rect x="{x}" y="{y}" width="{width}" height="{height}" fill="{color}"/>')
+        self.draw.rectangle((x*SCALE, y*SCALE, (x+width)*SCALE, (y+height)*SCALE), fill=color)
+
+    def text(self, x, y, text, size, color=INK, tracking=0):
+        font = ImageFont.truetype(str(FONT/'Arial.ttf'), round(size*SCALE))
+        self.parts.append(f'<text x="{x}" y="{y}" font-family="Arial, Helvetica, sans-serif" font-size="{size}" letter-spacing="{tracking}" fill="{color}">{html.escape(text)}</text>')
+        cursor = x*SCALE
+        for char in text:
+            self.draw.text((cursor, y*SCALE), char, font=font, fill=color, anchor='ls')
+            cursor += self.draw.textlength(char, font=font) + tracking*SCALE
+
+    def mark(self, x, y, size, color=INK):
+        # Two identical annular sectors, offset along the axis of their openings.
+        # The silhouette is an O; the negative space is an intentional passage.
+        radius, inner = size*.335, size*.205
+        for start, end, dx, dy in [(53, 217, -.018, .018), (233, 397, .018, -.018)]:
+            cx, cy = x+size*(.5+dx), y+size*(.5+dy)
+            def point(r, degrees):
+                radians = math.radians(degrees)
+                return cx+r*math.cos(radians), cy+r*math.sin(radians)
+            a, b, c, d = point(radius,start), point(radius,end), point(inner,end), point(inner,start)
+            path = f'M {a[0]:.4f} {a[1]:.4f} A {radius:.4f} {radius:.4f} 0 0 1 {b[0]:.4f} {b[1]:.4f} L {c[0]:.4f} {c[1]:.4f} A {inner:.4f} {inner:.4f} 0 0 0 {d[0]:.4f} {d[1]:.4f} Z'
+            self.parts.append(f'<path d="{path}" fill="{color}"/>')
+            angles = [start+(end-start)*i/180 for i in range(181)]
+            points = [point(radius,t) for t in angles] + [point(inner,t) for t in reversed(angles)]
+            self.draw.polygon([(round(px*SCALE),round(py*SCALE)) for px,py in points],fill=color)
+
+    def save(self, name, title):
+        (OUT/f'{name}.svg').write_text(f'<svg xmlns="http://www.w3.org/2000/svg" width="{self.width}" height="{self.height}" viewBox="0 0 {self.width} {self.height}" role="img" aria-labelledby="title"><title id="title">{html.escape(title)}</title>'+''.join(self.parts)+'</svg>')
+        self.im.resize((self.width,self.height),Image.Resampling.LANCZOS).save(OUT/f'{name}.png')
+
+
+for name, color in [('mark-ink',INK),('mark-white',PAPER)]:
+    c=Canvas(256,256);c.mark(0,0,256,color);c.save(name,'Outfence split-ring symbol')
+c=Canvas(512,512,INK);c.mark(16,16,480,PAPER);c.save('avatar','Outfence avatar')
+for name,background,color in [('wordmark-light',None,INK),('wordmark-dark',INK,PAPER)]:
+    c=Canvas(760,180,background);c.mark(6,14,152,color);c.text(184,120,'outfence',94,color,-3);c.save(name,'Outfence wordmark')
+c=Canvas(1600,560,PAPER)
+c.mark(74,132,300);c.text(410,342,'outfence',150,INK,-5)
+c.text(422,410,'Know where your agents connect.',27,MUTED,-.3)
+c.rect(1454,62,74,6,ACCENT);c.text(80,507,'LOCAL POLICIES. REVIEWABLE EVIDENCE.',15,MUTED,1)
+c.save('banner','Outfence — Know where your agents connect')
 c=Canvas(1280,640,INK)
-c.mark(64,48,82,MINT,MINT);c.text(160,108,'outfence',44,PAPER,True)
-c.text(72,263,'Know where your',72,PAPER,True);c.text(72,347,'agents connect.',72,PAPER,True)
-c.text(76,425,'Inspect connections. Set boundaries.',26,MINT)
-c.text(76,585,'OPEN SOURCE  /  LOCAL PROXY ALPHA',16,'#ADC4BD',mono=True)
-c.mark(932,349,240,MINT,MINT);c.save('social-preview','Outfence GitHub social preview — local proxy alpha')
-c=Canvas(1600,1200,PAPER)
-c.text(70,62,'OUTFENCE  /  IDENTITY PROPOSAL 01',16,MUTED,mono=True)
-c.text(70,173,'A clear boundary.',76,INK,True);c.text(70,257,'An observable path.',76,INK,True)
-c.text(74,311,'Know where your agents connect.',27,MUTED)
-c.rect(70,361,930,377,INK,24);c.mark(120,399,148,MINT,MINT);c.text(294,508,'outfence',83,PAPER,True)
-c.text(122,626,'Local policies.',35,PAPER);c.text(122,680,'Reviewable evidence.',35,MINT)
-c.rect(1030,361,500,377,'#E8ECE4',24);c.mark(1101,391,255,INK,INK)
-c.text(1078,701,'BOUNDARY + OUTBOUND PATH',16,MUTED,mono=True)
-colors=[('INK',INK),('MINT',MINT),('PAPER',PAPER),('SLATE',MUTED),('PASS',GREEN),('BLOCK',RED)]
-for i,(label,color) in enumerate(colors):
- x=70+i*246;c.rect(x,792,226,113,color,12)
- if label=='PAPER':c.line([(x,905),(x+226,905)],LINE,2)
- c.text(x,944,label,16,INK,True);c.text(x,975,color,18,MUTED,mono=True)
-c.line([(70,1024),(1530,1024)],LINE,2)
-c.text(70,1080,'Precise. Calm. Developer-first.',28,INK,True)
-c.text(70,1131,'Editable SVG + PNG exports  /  Working name; availability not reserved.',20,MUTED)
-c.save('brand-board','Outfence identity proposal with logo, palette and typography')
-(ROOT/'brand/tokens.json').write_text(json.dumps({'name':'Outfence','status':'proposal','colors':{'ink':INK,'mint':MINT,'paper':PAPER,'slate':MUTED,'line':LINE,'success':GREEN,'warning':AMBER,'danger':RED},'typography':{'sans':'Arial, Helvetica, sans-serif','mono':'Courier New, monospace'},'spacing':[4,8,12,16,24,32,48,64,80]},indent=2)+'\n')
-print('Exported 8 SVG/PNG asset pairs and tokens.json')
+c.mark(66,148,318,PAPER);c.text(416,360,'outfence',126,PAPER,-4)
+c.text(426,428,'Know where your agents connect.',24,'#C2C6BC',-.3)
+c.rect(1122,60,86,6,ACCENT);c.text(78,578,'OPEN SOURCE',14,'#C2C6BC',2)
+c.save('social-preview','Outfence — local policies, reviewable evidence')
+c=Canvas(1600,1050,PAPER)
+c.text(64,61,'OUTFENCE',15,INK,2);c.text(1210,61,'IDENTITY / 02',14,MUTED,1.5)
+c.mark(92,160,314);c.text(450,373,'outfence',142,INK,-5)
+c.text(457,438,'Know where your agents connect.',25,MUTED,-.2)
+c.rect(0,578,800,390,INK);c.mark(245,630,290,PAPER)
+c.rect(800,578,800,390,'#ECEEE7');c.mark(1060,644,258,INK)
+c.rect(1460,880,60,6,ACCENT)
+c.text(64,1018,'TWO FORMS. ONE OPENING.',13,MUTED,1.4)
+c.text(1192,1018,'MONOCHROME FIRST',13,MUTED,1)
+c.save('brand-board','Outfence minimal identity: split-ring mark and lowercase wordmark')
+(ROOT/'brand/tokens.json').write_text(json.dumps({
+    'name':'Outfence','identity_version':2,
+    'colors':{'ink':INK,'paper':PAPER,'accent':ACCENT,'slate':MUTED,'line':'#D9DDD3','success':'#17664D','warning':'#865500','danger':'#A43135'},
+    'typography':{'sans':'Arial, Helvetica, sans-serif','mono':'Courier New, monospace'},
+    'spacing':[4,8,12,16,24,32,48,64,80]},indent=2)+'\n')
+print('Exported 8 SVG/PNG pairs: identity 02.')

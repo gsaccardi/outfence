@@ -6,7 +6,7 @@ import socket
 import tempfile
 import threading
 import unittest
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -14,6 +14,7 @@ from urllib.request import ProxyHandler, build_opener
 
 from outfence.cli import main
 from outfence.policy import validate_policy
+from outfence.proxy import LoopbackHTTPServer as ThreadingHTTPServer
 from outfence.proxy import Proxy, Service, now
 from outfence.report import write_report
 
@@ -21,6 +22,12 @@ POLICY = {"version": 1, "allow": [{"host": "model.example", "port": 80}]}
 
 
 class AlphaTests(unittest.TestCase):
+    def test_local_server_setup_never_uses_reverse_dns(self):
+        with patch("socket.getfqdn", side_effect=AssertionError("Unexpected DNS lookup")):
+            with Service(ThreadingHTTPServer(("127.0.0.1", 0), BaseHTTPRequestHandler)):
+                with Service(Proxy(POLICY, "enforce")) as proxy:
+                    self.assertGreater(proxy.server_port, 0)
+
     def test_policy_rejects_ambiguous_values(self):
         invalid = [
             None,

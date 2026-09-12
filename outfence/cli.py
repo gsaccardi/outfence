@@ -7,13 +7,12 @@ import signal
 import subprocess
 import sys
 import uuid
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 from . import __version__
 from .demo import Fixture, demo_requests
 from .policy import DEMO_POLICY, load_policy
-from .proxy import Proxy, Service, now
+from .proxy import LoopbackHTTPServer, Proxy, Service, now
 from .report import write_report
 
 
@@ -111,7 +110,7 @@ def main(argv=None):
             print("OBSERVE: out-of-policy proxy requests may connect.", flush=True)
         started, incomplete, workload_exit = now(), False, 0
         if args.command == "demo":
-            fixture = ThreadingHTTPServer(("127.0.0.1", 0), Fixture)
+            fixture = LoopbackHTTPServer(("127.0.0.1", 0), Fixture)
             fixture.received = []
             with Service(fixture):
                 routes = {

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Replace the arrow-based identity with a minimal, monochrome split-ring symbol.
+- Skip reverse DNS during loopback server startup, preventing cold-process demo timeouts on macOS CI.
+- Add a regression check for DNS-free server startup and actionable smoke-test timeout output.
+
 ## 0.1.0a1 — first alpha candidate
 
 ### Added

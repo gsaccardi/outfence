@@ -1,24 +1,24 @@
 # Outfence brand guide
 
-**Working identity · v0.1 · 12 September 2026**
+**Identity 02 · 12 September 2026**
 
 ![Outfence identity proposal](assets/brand-board.png)
 
 ## Name and positioning
 
-**Outfence** combines outbound activity with a boundary. Pronounce it “OUT-fens.” Use Outfence in prose and `outfence` for the proposed repository/CLI. The lowercase wordmark is intentional.
+**Outfence** combines outbound activity with a boundary. Pronounce it “OUT-fens.” Use Outfence in prose and `outfence` for the repository/CLI. The lowercase wordmark is intentional.
 
 Primary line: **Know where your agents connect.**
 
 Supporting line: **Local policies. Reviewable evidence.**
 
-One sentence: “Outfence helps developers inspect and control outbound connections from containerized AI agent runs.” Until implemented, qualify this as the proposed product.
+One sentence: “Outfence helps developers inspect proxy-routed agent connections and apply local destination policies.”
 
 Alternative considered: Egresslane, technically clear but longer and less conversational. Tracegate was rejected because relevant software products already use it. Name clearance and handles remain pending; see [research notes](../docs/RESEARCH.md).
 
 ## Symbol
 
-An open rectangular boundary frames a dot and an outbound arrow. The mark also suggests an E for egress. It is original vector geometry with no external illustrations or icon dependencies. Use it to represent visible, intentional connections. It is not a certification mark.
+Two opposing circular segments form an open O. Small diagonal cuts and a slight offset make the negative space part of the symbol. The mark uses two filled vector paths with true circular arcs: no arrow, shield, outline, or decorative detail. It works in a single color at small sizes.
 
 Minimum display size: 24 px symbol, 160 px complete wordmark. Keep clear space around the visible symbol equal to at least 15% of its width. Keep proportions intact. Use the monochrome mark on busy backgrounds. Do not add shields, gradients, glows, rotations, or extra outlines.
 
@@ -26,22 +26,22 @@ Minimum display size: 24 px symbol, 160 px complete wordmark. Keep clear space a
 
 | Token | Hex | Use |
 |---|---|---|
-| Ink | `#102B2A` | Primary text and dark backgrounds |
-| Mint | `#A6F0CD` | Brand accent on ink; button background with ink text |
-| Paper | `#F7F5EF` | Light canvas and text on ink |
-| Slate | `#526563` | Secondary text on paper |
-| Line | `#D6DDD5` | Dividers and decorative boundaries |
+| Ink | `#171917` | Primary text and dark backgrounds |
+| Acid | `#D9F378` | Sparse supporting accent; never required to recognize the logo |
+| Paper | `#FAFAF7` | Light canvas and text on ink |
+| Slate | `#656B63` | Secondary text on paper |
+| Line | `#D9DDD3` | Dividers and decorative boundaries |
 | Success | `#17664D` | Allowed/passed label on paper |
 | Warning | `#865500` | Observation or incomplete coverage label on paper |
 | Danger | `#A43135` | Blocked/error label on paper |
 
-Use ink text on mint. Mint is unsuitable for small text on paper. Pair every state color with a word or symbol; never communicate policy decisions through color alone. Divider color is decorative and must not be the only indicator of an interactive control.
+Use ink text on acid. Acid is unsuitable for small text on paper. Keep the logo monochrome; reserve color for a small supporting detail. Pair every state color with a word or symbol; never communicate policy decisions through color alone. Divider color is decorative and must not be the only indicator of an interactive control.
 
 ## Typography and layout
 
-Current artwork: Arial Bold for headings/wordmark, Arial for body, Courier New for small technical labels. These are system-font choices; no font files are distributed. SVG wordmarks retain editable text and may differ on systems without the font. Use PNGs for consistent GitHub display or outline the text before preparing professional print assets.
+Current artwork: Arial Regular with tightened spacing for the wordmark and large headings; small uppercase labels use wider spacing. These are system-font choices; no font files are distributed. SVG wordmarks retain editable text and may differ on systems without the font. Use PNGs for consistent GitHub display or outline the text before preparing professional print assets.
 
-Web fallback stacks: `Arial, Helvetica, sans-serif` and `'Courier New', monospace`. Use a 4 px spacing base, generous margins, short headings, and clear labels. Prefer rounded panels with restrained radii to ornamental graphics.
+Web fallback stacks: `Arial, Helvetica, sans-serif` and `'Courier New', monospace`. Use a 4 px spacing base, generous margins, short headings, and clear labels. Use flat surfaces, generous whitespace, and a single clear visual hierarchy.
 
 ## Voice
 
@@ -64,8 +64,8 @@ Avoid: “Leak-proof,” “sovereignty certified,” “complete visibility,”
 | Dark wordmark | [SVG](assets/wordmark-dark.svg) | [PNG](assets/wordmark-dark.png) | 760 × 180 dark lockup |
 | README banner | [SVG](assets/banner.svg) | [PNG](assets/banner.png) | 1600 × 560 banner |
 | Social preview | [SVG](assets/social-preview.svg) | [PNG](assets/social-preview.png) | 1280 × 640 social card |
-| Brand board | [SVG](assets/brand-board.svg) | [PNG](assets/brand-board.png) | 1600 × 1200 identity overview |
+| Brand board | [SVG](assets/brand-board.svg) | [PNG](assets/brand-board.png) | 1600 × 1050 identity overview |
 
 Machine-readable colors and typography: [tokens.json](tokens.json). Rebuild artwork with `python3 scripts/build_brand.py` from the repository root. Requires Pillow and the documented system fonts, or `OUTFENCE_FONT_DIR` pointing to equivalent font filenames.
 
-The repository and artwork use Apache-2.0; the brand name remains provisional. No trademark, domain, package, or GitHub organization has been registered by this work.
+The repository and artwork use Apache-2.0; the brand name remains provisional. The repository is github.com/gsaccardi/outfence. No trademark, domain, or package-registry name has been reserved.

@@ -22,7 +22,11 @@ with tempfile.TemporaryDirectory() as temporary:
         ([sys.executable, "-m", "outfence", "demo", "--mode", "observe", "--output", "observe"], 2),
     ]
     for command, expected in commands:
-        result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, timeout=20)
+        print(f"Smoke: {command}", flush=True)
+        try:
+            result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, timeout=20)
+        except subprocess.TimeoutExpired as exc:
+            raise AssertionError(f"Timed out: {command}\nstdout={exc.stdout!r}\nstderr={exc.stderr!r}") from exc
         if result.returncode != expected:
             raise AssertionError(f"{command}: {result.returncode}\n{result.stdout}\n{result.stderr}")
     policy = json.loads((root / "policy.json").read_text())
