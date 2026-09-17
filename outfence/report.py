@@ -1,6 +1,5 @@
-"""Offline report serialization; no external assets or telemetry."""
+"""Terminal reporting and local JSON evidence."""
 
-import html
 import json
 import os
 from pathlib import Path
@@ -59,43 +58,55 @@ def write_report(
 
     save("report.json", json.dumps(report, indent=2) + "\n")
 
-    def esc(value):
-        return html.escape(str(value))
-
-    rows = (
-        "".join(
-            f"<tr><td><span class='{esc(e['action'])}'>{esc(e['action'].upper())}</span></td><td>{esc(e['host'] or 'unknown')}:{esc(e['port'] or '?')}</td><td>{esc(e['reason'])}</td><td>{esc(e['connection'])}</td></tr>"
-            for e in events
-        )
-        or '<tr><td colspan="4">No proxy requests observed. The workload may not use this proxy.</td></tr>'
-    )
-    counts = {
-        k: sum(e["action"] == k for e in events) for k in ("allowed", "blocked", "would_block")
-    }
-    title = (
-        "Incomplete run"
-        if incomplete
-        else "Proxy connection failure"
-        if proxy_failed
-        else "Workload failed"
-        if workload_exit
-        else "Policy violations observed"
-        if violations
-        else "No proxy policy violations observed"
-    )
-    page = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>Outfence · Run report</title><style>
-body{background:#f7f5ef;color:#102b2a;font:16px Arial,sans-serif;margin:0}main{max-width:1000px;margin:64px auto;padding:0 28px}header{background:#102b2a;color:#f7f5ef;padding:30px;border-radius:16px}h1{font-size:36px;margin-bottom:12px}small{color:#a6f0cd}.notice{border-left:4px solid #865500;padding:16px;background:#eee9dd;margin:24px 0;line-height:1.6}.stats{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0}.stat{min-width:140px;background:white;padding:24px;flex:1;border-radius:12px}.stat b{display:block;font-size:36px;margin-bottom:8px}.table{overflow:auto}table{width:100%;border-collapse:collapse;background:white}th,td{text-align:left;padding:18px 12px;border-bottom:1px solid #d6ddd5}th{font-size:12px;text-transform:uppercase}.allowed{color:#17664d}.blocked{color:#a43135}.would_block{color:#865500}pre{white-space:pre-wrap;background:#e8ece4;padding:24px;border-radius:12px}footer{margin:32px 0;color:#526563;line-height:1.6}</style><main>"""
-    page += f"<header><small>OUTFENCE / LOCAL PROXY ALPHA</small><h1>{title}</h1><p>{esc(mode.upper())} · {'Synthetic local demo' if demo else 'Proxy-aware workload'}</p></header>"
-    page += '<div class="notice"><strong>Coverage: proxy only. This is not a network sandbox.</strong><br>Direct connections can bypass these rules. An allowed destination can still receive sensitive data. This report is not a data-residency or compliance certificate.</div>'
-    page += (
-        '<div class="stats">'
-        + "".join(
-            f'<div class="stat"><b>{n}</b>{esc(k.replace("_", " "))}</div>'
-            for k, n in counts.items()
-        )
-        + "</div>"
-    )
-    page += f'<h2>Connections</h2><div class="table"><table><tr><th>Decision</th><th>Destination</th><th>Reason</th><th>Connection</th></tr>{rows}</table></div><h2>Policy used</h2><pre>{esc(json.dumps(policy, indent=2))}</pre>'
-    page += f"<footer>{esc(started)}<br>CLI exit: {exit_code} · Workload exit: {esc(workload_exit)}<br>No request payloads or headers stored. Tool attribution unavailable.</footer></main></html>"
-    save("report.html", page)
     return report
+
+
+def terminal_text(value):
+    """Keep metadata from injecting terminal controls or extra report lines."""
+    return "".join(char if char.isprintable() else repr(char)[1:-1] for char in str(value))
+
+
+def format_report(report):
+    reasons = {
+        0: "no observed proxy violations",
+        2: "policy violation",
+        3: "incomplete run or proxy failure",
+        4: "workload failed",
+    }
+    events = report["events"]
+    counts = {
+        action: sum(e["action"] == action for e in events)
+        for action in ("allowed", "blocked", "would_block")
+    }
+    lines = [
+        "",
+        "Outfence report",
+        f"Mode: {report['mode']} | Coverage: {report['coverage']['status']}",
+        f"Allowed: {counts['allowed']} | Blocked: {counts['blocked']} | Would block: {counts['would_block']}",
+        "",
+    ]
+    if events:
+        for event in events:
+            host = event["host"] or "unknown"
+            if ":" in host:
+                host = f"[{host}]"
+            destination = terminal_text(f"{host}:{event['port'] or '?'}")
+            lines.append(f"{terminal_text(event['action']).upper():<12} {destination}")
+            lines.append(
+                f"  {terminal_text(event['reason'])} | {terminal_text(event['connection'])}"
+            )
+    else:
+        lines.append(
+            "No proxy requests observed. This does not prove there was no network activity."
+        )
+    lines.extend(
+        [
+            "",
+            f"Exit {report['exit_code']}: {reasons[report['exit_code']]}",
+            f"Workload exit: {report['workload_exit_code'] if report['workload_exit_code'] is not None else 'unavailable'}",
+            "Task correctness: not evaluated.",
+            f"Dropped events: {report['coverage']['dropped_events']}",
+            "Direct connections bypass this proxy. Encrypted contents are not inspected.",
+        ]
+    )
+    return "\n".join(lines)

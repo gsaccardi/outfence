@@ -1,6 +1,8 @@
-# Report format — schema 1
+# Report format - schema 1
 
-Each run creates `report.json` and an offline `report.html`. Schema 1 is the alpha format, distinct from the future PRD schema and historical synthetic examples. Additive or breaking evolution will be documented with release notes; no long-term schema stability promise is made yet.
+Each run prints a terminal report and saves `report.json`. No HTML is generated. Schema 1 remains unchanged; no long-term schema stability promise is made yet.
+
+The terminal lists decisions and destinations with reasons and connection status, plus counts, mode, coverage, dropped events, and both exit codes. It does not evaluate task correctness. Empty reports explicitly mean no proxy requests were observed, not that the workload had no network activity. Non-printable metadata is escaped before terminal display.
 
 | Field | Meaning |
 |---|---|
@@ -21,4 +23,4 @@ Events contain time, host, port, transport (`http`, `connect`, or `unknown`), ac
 
 Reasons include allowlist_match, not_in_allowlist, non_public_address, dns_failed, connection_failed, tunnel_idle_timeout, invalid_destination, and invalid_or_unsupported_request. A policy-allowed destination may subsequently fail or be blocked by the address check.
 
-The HTML uses escaped values, a restrictive content policy, inline styles, and no external assets. JSON contains metadata, not request content. Reports are not signed or protected from changes by the workload's user account.
+JSON contains metadata, not request content. Reports are not signed or protected from changes by the workload's user account.

@@ -13,7 +13,7 @@ from . import __version__
 from .demo import Fixture, demo_requests
 from .policy import DEMO_POLICY, load_policy
 from .proxy import LoopbackHTTPServer, Proxy, Service, now
-from .report import write_report
+from .report import format_report, terminal_text, write_report
 
 
 class Interrupted(Exception):
@@ -140,15 +140,8 @@ def main(argv=None):
             reserved=True,
             dropped_events=proxy.dropped_events,
         )
-        print(f"\nReport: {(output / 'report.html').resolve()}")
-        print(f"JSON:   {(output / 'report.json').resolve()}")
-        reasons = {
-            0: "no observed proxy violations",
-            2: "policy violation",
-            3: "incomplete run or proxy failure",
-            4: "workload failed",
-        }
-        print(f"Exit {report['exit_code']}: {reasons[report['exit_code']]}")
+        print(format_report(report))
+        print(f"JSON: {terminal_text((output / 'report.json').resolve())}")
         return report["exit_code"]
     except (OSError, ValueError) as exc:
         print(f"Outfence setup error: {exc}", file=sys.stderr)

@@ -1,4 +1,4 @@
-# CLI reference — 0.1.0a1
+# CLI reference - 0.1.0a1
 
 `outfence` and `python -m outfence` are equivalent. Run `--help` or `SUBCOMMAND --help` for argument details.
 
@@ -8,10 +8,12 @@
 | `outfence init [path]` | Write deny-all JSON policy; defaults to outfence.json; refuses overwrite |
 | `outfence init demo.json --demo` | Write the two-host synthetic demo policy |
 | `outfence check path.json` | Validate policy without network access |
-| `outfence demo` | Start local fixture and proxy; attempt three synthetic destinations; save reports |
+| `outfence demo` | Start local fixture and proxy; attempt three synthetic destinations; print a terminal report and save JSON |
 | `outfence demo --mode observe` | Reach all three demo fixtures and label the third would-block |
 | `outfence demo --policy path.json` | Try edited rules against the synthetic fixtures |
 | `outfence run --policy path.json -- COMMAND ...` | Run a proxy-aware program; policy is required |
+
+Reports appear directly in the terminal. JSON evidence is saved under a new `runs/run-*` directory by default; `--output` selects a different new directory. No HTML is generated.
 
 Both `demo` and `run` accept `--mode enforce|observe` (enforce by default) and `--output NEW_DIRECTORY`. `run` also accepts `--timeout SECONDS` (positive integer; default 60). Put all Outfence options before `--`. Command arguments after it go to your program. No shell expansion is performed by Outfence itself.
 
@@ -21,7 +23,7 @@ The default demo uses reserved `.example` names mapped internally to localhost. 
 
 `version` must be integer 1. `allow` is an array of objects with exactly `host` and `port`. Host normalization accepts canonical IP literals or lowercase ASCII DNS labels. Domain matching is exact, not suffix-based; `api.example.com` does not include `example.com` or `other.api.example.com`. Ports are explicit. No wildcard, CIDR, protocol, custom resolver, or private-address override field is supported.
 
-The prototype's old YAML file is historical and is not parsed. CONNECT and HTTP GET both use the same host/port rules; a rule does not restrict payload protocol or API paths.
+CONNECT and HTTP GET both use the same host/port rules; a rule does not restrict payload protocol or API paths.
 
 ## Outcomes and resource limits
 

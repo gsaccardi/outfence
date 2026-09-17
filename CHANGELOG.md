@@ -2,13 +2,16 @@
 
 ## Unreleased
 
+- Replace generated HTML with terminal reports showing decisions, counts, coverage, and separate workload outcomes. Keep JSON evidence and existing exit codes.
+- Move planning drafts and obsolete schema examples into ignored local notes; retain practical user documentation.
+
 - Add a live Ollama/Qwen repository-research agent, with explicit proxied HTTPS tools, blocked/allowed policies, deterministic tests, and a reproducible walkthrough.
 
 - Replace the arrow-based identity with a minimal, monochrome split-ring symbol.
 - Skip reverse DNS during loopback server startup, preventing cold-process demo timeouts on macOS CI.
 - Add a regression check for DNS-free server startup and actionable smoke-test timeout output.
 
-## 0.1.0a1 — first alpha candidate
+## 0.1.0a1 - first alpha candidate
 
 ### Added
 

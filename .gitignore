@@ -13,3 +13,6 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Personal planning, research, and launch drafts
+/local-notes/

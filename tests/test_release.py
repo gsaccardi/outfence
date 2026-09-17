@@ -16,7 +16,7 @@ from outfence.cli import main
 from outfence.policy import validate_policy
 from outfence.proxy import LoopbackHTTPServer as ThreadingHTTPServer
 from outfence.proxy import Proxy, Service, now
-from outfence.report import write_report
+from outfence.report import format_report, write_report
 
 POLICY = {"version": 1, "allow": [{"host": "model.example", "port": 80}]}
 
@@ -206,6 +206,26 @@ class AlphaTests(unittest.TestCase):
                     3,
                 )
                 run.assert_not_called()
+
+    def test_terminal_report_distinguishes_empty_failed_and_incomplete_runs(self):
+        for workload_exit, incomplete, expected in [(0, False, 0), (7, False, 4), (None, True, 3)]:
+            with self.subTest(expected=expected), tempfile.TemporaryDirectory() as tmp:
+                report = write_report(
+                    Path(tmp) / "report",
+                    "enforce",
+                    POLICY,
+                    [],
+                    now(),
+                    workload_exit,
+                    incomplete=incomplete,
+                )
+                output = format_report(report)
+                self.assertIn(f"Exit {expected}:", output)
+                self.assertIn("No proxy requests observed", output)
+                self.assertIn("Task correctness: not evaluated.", output)
+                self.assertIn(
+                    "Coverage: incomplete" if incomplete else "Coverage: proxy_only", output
+                )
 
     def test_report_permissions_and_does_not_overwrite(self):
         with tempfile.TemporaryDirectory() as tmp:

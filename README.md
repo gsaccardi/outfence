@@ -1,10 +1,12 @@
-<p align="center"><img src="brand/assets/banner.png" alt="Outfence — Know where your agents connect." width="100%"></p>
+<p align="center"><img src="brand/assets/banner.png" alt="Outfence - Know where your agents connect." width="100%"></p>
 
 # Outfence
 
 **Know where your agents connect.**
 
-Outfence is a small, open source CLI that checks **proxy-routed outbound connections** against an allowlist and writes local HTML/JSON reports. Use it to explore an agent's network dependencies and compare observation with blocking.
+Outfence is a small, open source CLI that checks **proxy-routed outbound connections** against an allowlist and writes a terminal report and local JSON evidence. Use it to explore an agent's network dependencies and compare observation with blocking.
+
+We're exploring how teams can **test AI agents against their deployment policies**, starting with outbound network dependencies. The question: before deploying or updating an agent, which external services does it need, and what happens when access is denied?
 
 **Alpha 0.1.0a1 · Apache-2.0 · Python 3.10+ · macOS/Linux · Zero runtime dependencies**
 
@@ -34,7 +36,7 @@ telemetry.example        HTTP 403
 Fixture received 2 connections (destination-side evidence).
 ```
 
-The CLI prints the paths of an offline HTML report and a JSON report under `runs/`. Open `report.html` in your browser. **Exit 2 is expected:** the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
+The CLI prints connection decisions, counts, exit status, and coverage limits directly in your terminal. It also saves `report.json` under `runs/`; no HTML is generated. **Exit 2 is expected:** the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
 
 Compare observation mode:
 
@@ -56,7 +58,7 @@ outfence --version
 outfence demo
 ```
 
-Installation may download build tooling; the application has no third-party runtime dependencies. The package is not published to PyPI yet—use the source checkout or a locally built wheel. The installed command works outside the checkout.
+Installation may download build tooling; the application has no third-party runtime dependencies. The package is not published to PyPI yet-use the source checkout or a locally built wheel. The installed command works outside the checkout.
 
 ## Change a rule
 
@@ -94,7 +96,7 @@ The runner sets `HTTP_PROXY`, `HTTPS_PROXY`, and lowercase equivalents, and clea
 | HTTP GET forwarding | HTTP POST/PUT/etc. forwarding, custom HTTP headers and authentication |
 | CONNECT tunnels used by HTTPS clients | TLS/content inspection, confirmation that tunnel bytes are actually TLS |
 | Exact destination rules and public-address checks | Direct sockets, clients that ignore proxy settings, remote service downstream connections |
-| Local policy snapshot and decision report | Tool/process attribution and complete traffic inventory |
+| Local JSON policy snapshot and terminal decisions | Tool/process attribution and complete traffic inventory |
 | Workload timeout and ordinary child process cleanup | Host isolation, detached-process containment, Windows support |
 
 HTTPS uses the client's normal end-to-end TLS connection. Plain HTTP forwarding intentionally preserves only Host and Connection request headers and Content-Type/Location response headers; it is intended for simple diagnostics. CONNECT idle timeout is 15 seconds; socket operations time out after 10 seconds. See [CLI reference](docs/CLI.md) for resource limits and outcomes.
@@ -136,13 +138,14 @@ Tests use local fixtures and verify destination-side receipt. CI is configured f
 
 Useful first contributions: sanitized agent-client compatibility cases, clearer report explanations, and feedback from people answering customer network-security questions.
 
-## Where this is going
+## Feedback and scope
 
-The next investigation is a supported Linux execution boundary, including whether to reuse GitHub's Agentic Workflow Firewall. We will prove direct-egress enforcement before claiming it. The [PRD](docs/PRD.md) describes that future product, not today's capabilities.
+We're investigating deployment checks for agents that teams build or adopt, starting with network dependencies. The Ollama walkthrough is the current verified real-agent example. Codex, Claude Code, and Copilot compatibility has not been verified.
 
-- [Changelog](CHANGELOG.md) · [Alpha release notes](docs/RELEASE.md)
+What evidence would your team need before deploying an agent? [Open an issue](https://github.com/gsaccardi/outfence/issues) with a synthetic or sanitized workflow, the decision you need to make, and what your current tools cannot show.
+
+- [CLI reference](docs/CLI.md) · [JSON format](docs/REPORT.md)
 - [Security](SECURITY.md) · [Architecture](docs/ARCHITECTURE.md)
-- [Customer validation](docs/VALIDATION.md) · [Research](docs/RESEARCH.md)
-- [Brand kit](brand/README.md)
+- [Changelog](CHANGELOG.md) · [Brand kit](brand/README.md)
 
 Licensed under [Apache-2.0](LICENSE). GitHub: [gsaccardi/outfence](https://github.com/gsaccardi/outfence). Package-registry and domain names have not been reserved.

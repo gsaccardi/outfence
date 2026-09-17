@@ -14,7 +14,7 @@ Supporting line: **Local policies. Reviewable evidence.**
 
 One sentence: “Outfence helps developers inspect proxy-routed agent connections and apply local destination policies.”
 
-Alternative considered: Egresslane, technically clear but longer and less conversational. Tracegate was rejected because relevant software products already use it. Name clearance and handles remain pending; see [research notes](../docs/RESEARCH.md).
+Name clearance and additional handles remain pending.
 
 ## Symbol
 

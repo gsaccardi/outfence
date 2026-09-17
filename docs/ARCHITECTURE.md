@@ -1,4 +1,4 @@
-# Architecture — local proxy alpha
+# Architecture - local proxy alpha
 
 The package uses only the Python standard library. Its modules separate CLI lifecycle, policy validation, proxy traffic handling, synthetic fixtures, and report generation.
 
@@ -10,7 +10,7 @@ outfence run
   │    └─ proxy-aware requests → destination rule → public IP check → upstream
   ├─ wait for exit / timeout / interruption
   ├─ stop ordinary process group + proxy sockets
-  └─ snapshot decisions → local JSON and HTML
+  └─ snapshot decisions → terminal report + local JSON
 
 Direct workload connections ───────────────────────────────→ outside coverage
 ```
@@ -19,4 +19,4 @@ Direct workload connections ─────────────────�
 
 The proxy caps active connections and event storage, closes sockets at shutdown, and marks incomplete evidence on detected loss/interruption. These mechanisms improve diagnostic honesty, not containment: the workload can bypass the proxy or modify files under the same user account.
 
-For a future enforcement product, evaluate [GitHub Agentic Workflow Firewall](https://github.github.com/gh-aw-firewall/) before choosing a new backend. Today's package deliberately makes no container or firewall claim. The [technical scope proposal](TECHNICAL-SCOPE.md) lists the feasibility tests required before that changes.
+A supported network boundary is a future investigation. Today's package makes no container or firewall claim.

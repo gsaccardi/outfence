@@ -35,11 +35,13 @@ with tempfile.TemporaryDirectory() as temporary:
     result = subprocess.run([executable, "demo", "--policy", "policy.json", "--output", "allow-all"],
                             cwd=root, env=env, capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stdout + result.stderr
+    assert "Outfence report" in result.stdout
+    assert "Allowed: 3 | Blocked: 0" in result.stdout
     for mode, expected in [("enforce", ["allowed", "allowed", "blocked"]),
                            ("observe", ["allowed", "allowed", "would_block"]),
                            ("allow-all", ["allowed"] * 3)]:
         report = json.loads((root / mode / "report.json").read_text())
         assert [e["action"] for e in report["events"]] == expected
         assert report["coverage"]["status"] == "proxy_only"
-        assert (root / mode / "report.html").is_file()
+        assert not (root / mode / "report.html").exists()
 print("Installed wheel smoke test passed: init, check, enforce, observe, edited policy.")

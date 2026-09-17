@@ -9,6 +9,7 @@ from outfence.cli import main
 from outfence.core import Proxy, Service, load_policy, now, write_report
 from outfence.demo import Fixture, demo_requests
 from outfence.proxy import LoopbackHTTPServer as ThreadingHTTPServer
+from outfence.report import format_report
 
 POLICY = {
     "version": 1,
@@ -76,16 +77,18 @@ class ProxyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             event = {
                 "time": now(),
-                "host": "<script>alert(1)</script>",
+                "host": "host\x1b[2J\nforged",
                 "port": 80,
                 "action": "blocked",
                 "reason": "not_in_allowlist",
                 "connection": "not_attempted",
             }
             report = write_report(Path(tmp) / "report", "enforce", POLICY, [event], now(), 0)
-            content = (Path(tmp) / "report/report.html").read_text()
-            self.assertNotIn("<script>", content)
-            self.assertIn("&lt;script&gt;", content)
+            content = format_report(report)
+            self.assertNotIn("\x1b", content)
+            self.assertNotIn("\nforged", content)
+            self.assertIn(r"\x1b[2J\nforged", content)
+            self.assertFalse((Path(tmp) / "report/report.html").exists())
             self.assertEqual(report["coverage"]["status"], "proxy_only")
             self.assertEqual(report["exit_code"], 2)
 

@@ -49,7 +49,7 @@ Exit 2: policy violation
 
 The exact answer and tool-call order can vary by model. The agent treats a failed tool as a result to explain; it can finish with workload exit 0 while Outfence returns **2** for the denied connection. In the report, the README destination should show `blocked / not_in_allowlist / not_attempted`.
 
-Open the printed `report.html` path in your browser, or inspect `report.json` for exact events. The example does not automatically publish reports or upload model prompts.
+Read the report in your terminal, or inspect the saved `report.json` for exact events. The example does not automatically publish reports or upload model prompts.
 
 ## 2. Allow both tools
 

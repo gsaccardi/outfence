@@ -1,6 +1,6 @@
 ## Problem and change
 
-## Relevant PRD requirement or decision
+## Problem or linked issue
 
 ## Validation
 State what was reviewed or tested and any remaining limits.
