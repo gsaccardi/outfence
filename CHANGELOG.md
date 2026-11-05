@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add a model tap for local OpenAI-compatible servers (`run --model-upstream`) and destination provenance.
+  - Each proxy decision records which source first named the host: the user, the system prompt, a tool definition, a tool result, or only the model.
+  - Each decision also records the inferred tool call and, when the offered tools changed, a trigger candidate.
+  - A new optional `allow_from` policy key permits hosts named by trusted sources. Model output never authorizes a destination.
+  - The tap fails closed on unreadable answers and keeps no prompt or answer text.
+- Add a minimal stdio MCP fetch server and an MCP agent-loop example, with deterministic tests and a provenance walkthrough.
+
 - Replace generated HTML with terminal reports showing decisions, counts, coverage, and separate workload outcomes. Keep JSON evidence and existing exit codes.
 - Move planning drafts and obsolete schema examples into ignored local notes; retain practical user documentation.
 

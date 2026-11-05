@@ -96,7 +96,8 @@ The runner sets `HTTP_PROXY`, `HTTPS_PROXY`, and lowercase equivalents, and clea
 | HTTP GET forwarding | HTTP POST/PUT/etc. forwarding, custom HTTP headers and authentication |
 | CONNECT tunnels used by HTTPS clients | TLS/content inspection, confirmation that tunnel bytes are actually TLS |
 | Exact destination rules and public-address checks | Direct sockets, clients that ignore proxy settings, remote service downstream connections |
-| Local JSON policy snapshot and terminal decisions | Tool/process attribution and complete traffic inventory |
+| Local JSON policy snapshot and terminal decisions | Authenticated tool/process attribution and complete traffic inventory |
+| Destination provenance from non-streaming chat completions to a local model server (`--model-upstream`) | Streaming responses, hosted model APIs, harnesses that mislabel message roles |
 | Workload timeout and ordinary child process cleanup | Host isolation, detached-process containment, Windows support |
 
 HTTPS uses the client's normal end-to-end TLS connection. Plain HTTP forwarding intentionally preserves only Host and Connection request headers and Content-Type/Location response headers; it is intended for simple diagnostics. CONNECT idle timeout is 15 seconds; socket operations time out after 10 seconds. See [CLI reference](docs/CLI.md) for resource limits and outcomes.
@@ -109,9 +110,29 @@ Try the [local Ollama + GitHub walkthrough](docs/OLLAMA-WALKTHROUGH.md). A real 
 python3 -m outfence run --policy examples/ollama-policy.json --timeout 300 -- python3 examples/ollama_agent.py
 ```
 
+## See where a destination came from (preview)
+
+An agent reaches the network through tools that the model chooses to call. With `--model-upstream`, Outfence also sits between the agent and a **local** OpenAI-compatible model server (Ollama, mlx-lm, llama.cpp, vLLM). For every destination it records which source first named the host: the user, the system prompt, a tool definition, a tool result, or **only the model**. A policy can then allow hosts the user asked for. The model's own output never authorizes a destination.
+
+```sh
+python3 -m outfence run --policy examples/provenance-policy.json \
+  --model-upstream http://127.0.0.1:11434 --timeout 300 \
+  -- python3 examples/mcp_agent.py --model qwen2.5:7b --server fetch-mcp \
+     --question "Open the official Python documentation website and tell me its title."
+```
+
+```text
+BLOCKED      docs.python.org:443
+  model_originated | not_attempted
+  origin: named only by the model; the user, system prompt, tools and tool results never did
+  tool call: mcp__fetch-mcp__request_url
+```
+
+Ask the agent to fetch `https://example.com/` instead, and the same policy allows it as `allow_from_user`. A model backdoored to call home when a particular MCP server appears produces exactly this signature: a destination nobody named, right after the tool environment changed. CERT-AgID described such a backdoor in November 2026, and in that case the report adds `trigger?: MCP server … appeared N s before this request`. Matching is textual, and the harness's message roles are trusted. See the [provenance walkthrough](docs/PROVENANCE-WALKTHROUGH.md) and the [security notes](SECURITY.md).
+
 ## Read the result
 
-Reports contain destination host/port, decision, reason, connection status, timestamps, policy snapshot, and coverage limits. They contain no stored request paths, bodies, headers, environment values, or command output. Workload stdout/stderr remains visible in your terminal. Hostnames can still be sensitive; review reports before sharing.
+Reports contain destination host/port, decision, reason, connection status, timestamps, policy snapshot, and coverage limits. With the model tap, they also contain each destination's origin, tool names, and tool-environment changes. They contain no stored request paths, bodies, headers, prompts, answers, environment values, or command output. Workload stdout/stderr remains visible in your terminal. Hostnames can still be sensitive; review reports before sharing.
 
 | Exit | Meaning |
 |---|---|
@@ -128,8 +149,8 @@ Reports stay on your machine with owner-only file permissions. Use `--output NEW
 
 ```sh
 python -m pip install -r requirements-dev.txt
-ruff check outfence tests examples/ollama_agent.py
-ruff format --check outfence tests examples/ollama_agent.py
+ruff check outfence tests examples
+ruff format --check outfence tests examples
 python -m unittest discover -s tests -v
 python -m build --no-isolation
 ```

@@ -7,11 +7,15 @@ import signal
 import subprocess
 import sys
 import uuid
+from contextlib import nullcontext
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from . import __version__
 from .demo import Fixture, demo_requests
+from .modeltap import ModelTap
 from .policy import DEMO_POLICY, load_policy
+from .provenance import Session
 from .proxy import LoopbackHTTPServer, Proxy, Service, now
 from .report import format_report, terminal_text, write_report
 
@@ -24,11 +28,29 @@ def interrupt(signum, frame):
     raise Interrupted()
 
 
-def run_workload(cmd, proxy, timeout):
+def model_upstream(value):
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname not in ("127.0.0.1", "localhost", "::1")
+        or not parsed.port
+        or parsed.username is not None
+        or parsed.path not in ("", "/")
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "--model-upstream must be a local model server, e.g. http://127.0.0.1:8080"
+        )
+    return ("127.0.0.1" if parsed.hostname == "localhost" else parsed.hostname), parsed.port
+
+
+def run_workload(cmd, proxy, timeout, extra_env=None):
     url = f"http://127.0.0.1:{proxy.server_port}"
     env = dict(os.environ)
     env.update({k: url for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy")})
     env.update(NO_PROXY="", no_proxy="")
+    env.update(extra_env or {})
     old_handler = signal.signal(signal.SIGTERM, interrupt)
     proc = None
     try:
@@ -74,6 +96,11 @@ def parser():
             p.add_argument(
                 "--timeout", type=int, default=60, help="Workload timeout in seconds (default: 60)"
             )
+            p.add_argument(
+                "--model-upstream",
+                metavar="URL",
+                help="Observe chat completions sent to this local OpenAI-compatible model server",
+            )
             p.add_argument("workload", nargs=argparse.REMAINDER)
     return result
 
@@ -90,25 +117,33 @@ def main(argv=None):
             return 0
         if args.command == "check":
             policy = load_policy(args.path)
-            print(f"Valid policy: {len(policy['allow'])} exact destination rules")
+            sources = ", ".join(policy.get("allow_from", []))
+            named = f"; also hosts named by: {sources}" if sources else ""
+            print(f"Valid policy: {len(policy['allow'])} exact destination rules{named}")
             return 0
         if os.name != "posix":
             raise ValueError("This alpha supports macOS and Linux only.")
         policy = load_policy(args.policy) if args.policy else DEMO_POLICY
+        upstream = None
         if args.command == "run":
             cmd = args.workload[1:] if args.workload[:1] == ["--"] else args.workload
             if not cmd or args.timeout < 1:
                 raise ValueError("Provide a positive timeout and a command after --.")
+            if args.model_upstream:
+                upstream = model_upstream(args.model_upstream)
         output = (
             Path(args.output) if args.output else Path("runs") / ("run-" + uuid.uuid4().hex[:10])
         )
         # Validate/reserve the output before starting a potentially side-effectful command.
         output.mkdir(parents=True, exist_ok=False, mode=0o700)
-        print(f"Outfence {__version__} · local proxy alpha · coverage: proxy only", flush=True)
+        coverage = "proxy + model tap" if upstream else "proxy only"
+        print(f"Outfence {__version__}, local proxy alpha, coverage: {coverage}", flush=True)
         print("Direct connections can bypass this proxy. No OS/container isolation.", flush=True)
         if args.mode == "observe":
             print("OBSERVE: out-of-policy proxy requests may connect.", flush=True)
-        started, incomplete, workload_exit = now(), False, 0
+        if policy.get("allow_from") and not upstream:
+            print("allow_from needs --model-upstream; only exact allow rules apply.", flush=True)
+        started, incomplete, workload_exit, session = now(), False, 0, None
         if args.command == "demo":
             fixture = LoopbackHTTPServer(("127.0.0.1", 0), Fixture)
             fixture.received = []
@@ -126,8 +161,17 @@ def main(argv=None):
                 f"  Fixture received {len(fixture.received)} connections (destination-side evidence)."
             )
         else:
-            with Service(Proxy(policy, args.mode)) as proxy:
-                workload_exit, incomplete = run_workload(cmd, proxy, args.timeout)
+            session = Session() if upstream else None
+            with (
+                Service(ModelTap(upstream, session)) if upstream else nullcontext() as tap,
+                Service(Proxy(policy, args.mode, session=session)) as proxy,
+            ):
+                env = {}
+                if tap is not None:
+                    base = f"http://127.0.0.1:{tap.server_port}/v1"
+                    env = {"OPENAI_BASE_URL": base, "OUTFENCE_MODEL_URL": base}
+                    print(f"Model tap: {base} -> {args.model_upstream}", flush=True)
+                workload_exit, incomplete = run_workload(cmd, proxy, args.timeout, env)
         report = write_report(
             output,
             args.mode,
@@ -136,9 +180,10 @@ def main(argv=None):
             started,
             workload_exit,
             demo=args.command == "demo",
-            incomplete=incomplete or proxy.incomplete,
+            incomplete=incomplete or proxy.incomplete or bool(session and session.errors),
             reserved=True,
             dropped_events=proxy.dropped_events,
+            model_tap=session.summary() if session else None,
         )
         print(format_report(report))
         print(f"JSON: {terminal_text((output / 'report.json').resolve())}")

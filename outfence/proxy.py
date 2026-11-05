@@ -30,13 +30,15 @@ class LoopbackHTTPServer(ThreadingHTTPServer):
 class Proxy(LoopbackHTTPServer):
     daemon_threads = True
 
-    def __init__(self, policy, mode, fixtures=None, max_events=10000):
+    def __init__(self, policy, mode, fixtures=None, max_events=10000, session=None):
         if mode not in ("enforce", "observe"):
             raise ValueError("Mode must be enforce or observe.")
         self.policy = copy.deepcopy(validate_policy(policy))
         self.mode = mode
         # Only internal synthetic tests/demo supply these fixed endpoint mappings.
         self.fixtures = fixtures or {}
+        # Model-tap provenance; without it, decisions use exact allow rules only.
+        self.session = session
         self.events = []
         self.lock = threading.RLock()
         self.stopping = threading.Event()
@@ -71,7 +73,7 @@ class Proxy(LoopbackHTTPServer):
         with self.lock:
             self.incomplete = True
 
-    def record(self, host, port, transport, action, reason):
+    def record(self, host, port, transport, action, reason, **details):
         event = dict(
             time=now(),
             host=host,
@@ -81,7 +83,10 @@ class Proxy(LoopbackHTTPServer):
             reason=reason,
             connection="not_attempted",
             tool=None,
+            origin=None,
+            trigger=None,
         )
+        event.update(details)
         with self.lock:
             if len(self.events) >= self.max_events:
                 self.dropped_events += 1
@@ -101,10 +106,19 @@ class Proxy(LoopbackHTTPServer):
 
     def destination(self, host, port, transport):
         allowed = {"host": host, "port": port} in self.policy["allow"]
+        reason = "allowlist_match" if allowed else "not_in_allowlist"
+        details = {}
+        if self.session is not None:
+            origin, granted, details = self.session.check(
+                host, port, self.policy.get("allow_from", [])
+            )
+            details["origin"] = origin
+            if not allowed and granted:
+                allowed, reason = True, f"allow_from_{granted}"
+            elif not allowed and origin == "model":
+                reason = "model_originated"
         action = "allowed" if allowed else "blocked" if self.mode == "enforce" else "would_block"
-        event = self.record(
-            host, port, transport, action, "allowlist_match" if allowed else "not_in_allowlist"
-        )
+        event = self.record(host, port, transport, action, reason, **details)
         if event is None or action == "blocked":
             return None, event
         if (host, port) in self.fixtures:
