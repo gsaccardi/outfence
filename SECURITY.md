@@ -17,6 +17,17 @@ Before an upstream connection it checks resolved IP addresses and rejects non-pu
 - Allowed/observed hostname lookups use the host resolver. DNS metadata, tunneling via allowed services, IPv6/direct traffic outside the proxy, and remote tool downstream calls are not comprehensively controlled.
 - Labels identify a proxy run, not the tool or process responsible for a request.
 
+## Model tap and provenance (preview)
+
+With `--model-upstream`, a second loopback listener forwards non-streaming chat completions to a local model server. It records which source named each destination host. Use it as evidence, not as a boundary.
+
+- **Textual matching:** a host counts as named only when it appears literally in the model's context. A model can launder a destination through a source it controls, such as a tool result it caused. That is why `tool_output` is not allowed by default. A host spelled differently is not matched.
+- **The harness is trusted:** message roles come from the harness. A harness that mislabels model output as user text defeats provenance.
+- **Unauthenticated listener:** the tap binds to 127.0.0.1 without authentication, like the proxy. Other local processes can use it while it is active.
+- **Inferred attribution:** tool attribution and trigger candidates are inferred from tool-call arguments and changes in the offered tools. They are correlations, not proof that a tool or a server caused a request.
+- **Fails closed:** unreadable model answers are refused, not forwarded. Streaming and other API shapes are rejected.
+- **Limited scope:** traffic that bypasses the tap, such as hosted model APIs or direct calls, is outside provenance coverage.
+
 ## Failure behavior
 
 The proxy caps concurrent connections at 32 and retained events at 10,000. Capacity rejection or event loss marks coverage incomplete. Once the event cap is reached, new destination requests are rejected. Shutdown closes active sockets; unfinished handlers mark the run incomplete. Resolver calls can remain blocked in daemon threads, but new upstream connections are refused after shutdown begins. These are development safeguards, not a complete fail-closed system: the workload can still bypass the proxy directly.

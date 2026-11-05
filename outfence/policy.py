@@ -12,6 +12,9 @@ DEMO_POLICY = {
         {"host": "retrieval.example", "port": 80},
     ],
 }
+# Most trusted first. A policy may allow destinations named by any source except the model.
+ORIGINS = ("user", "system", "tool_definition", "tool_output", "model")
+ALLOW_FROM = ORIGINS[:-1]
 
 
 def normalize_host(value):
@@ -32,12 +35,19 @@ def normalize_host(value):
 def validate_policy(data):
     if (
         not isinstance(data, dict)
-        or set(data) != {"version", "allow"}
+        or not {"version", "allow"} <= set(data) <= {"version", "allow", "allow_from"}
         or type(data["version"]) is not int
         or data["version"] != 1
         or not isinstance(data["allow"], list)
     ):
-        raise ValueError("Policy must contain exactly version: 1 and an allow list.")
+        raise ValueError("Policy must contain version: 1, an allow list and optional allow_from.")
+    allow_from = data.get("allow_from", [])
+    if (
+        not isinstance(allow_from, list)
+        or any(origin not in ALLOW_FROM for origin in allow_from)
+        or len(set(allow_from)) != len(allow_from)
+    ):
+        raise ValueError(f"allow_from must list distinct sources from: {', '.join(ALLOW_FROM)}.")
     seen = set()
     for rule in data["allow"]:
         if not isinstance(rule, dict) or set(rule) != {"host", "port"}:

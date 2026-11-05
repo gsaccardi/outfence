@@ -11,13 +11,13 @@ python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 python -m pip install --no-build-isolation -e .
-ruff check outfence tests examples/ollama_agent.py
-ruff format --check outfence tests examples/ollama_agent.py
+ruff check outfence tests examples
+ruff format --check outfence tests examples
 python -m unittest discover -s tests -v
 python -m build --no-isolation
 ```
 
-Use `ruff format outfence tests examples/ollama_agent.py` to format changes. To check packaging, install the built wheel into a fresh virtual environment and run `scripts/smoke_install.py` with that environment's Python. It exercises the installed command from outside the checkout.
+Use `ruff format outfence tests examples` to format changes. To check packaging, install the built wheel into a fresh virtual environment and run `scripts/smoke_install.py` with that environment's Python. It exercises the installed command from outside the checkout.
 
 Tests must not require paid APIs or external services. Use local fixtures, explicit synthetic endpoint mappings, and destination-side assertions. Do not expand the public policy schema to allow the internal fixture bypass.
 
