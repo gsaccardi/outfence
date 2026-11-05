@@ -30,7 +30,9 @@ class LoopbackHTTPServer(ThreadingHTTPServer):
 class Proxy(LoopbackHTTPServer):
     daemon_threads = True
 
-    def __init__(self, policy, mode, fixtures=None, max_events=10000, session=None):
+    def __init__(
+        self, policy, mode, fixtures=None, max_events=10000, session=None, on_decision=None
+    ):
         if mode not in ("enforce", "observe"):
             raise ValueError("Mode must be enforce or observe.")
         self.policy = copy.deepcopy(validate_policy(policy))
@@ -39,6 +41,7 @@ class Proxy(LoopbackHTTPServer):
         self.fixtures = fixtures or {}
         # Model-tap provenance; without it, decisions use exact allow rules only.
         self.session = session
+        self.on_decision = on_decision
         self.events = []
         self.lock = threading.RLock()
         self.stopping = threading.Event()
@@ -103,6 +106,13 @@ class Proxy(LoopbackHTTPServer):
     def snapshot(self):
         with self.lock:
             return copy.deepcopy(self.events)
+
+    def announce(self, event):
+        if self.on_decision is not None and event is not None:
+            try:
+                self.on_decision(dict(event))
+            except Exception:
+                pass  # A display failure must never change or delay a proxy decision.
 
     def destination(self, host, port, transport):
         allowed = {"host": host, "port": port} in self.policy["allow"]
@@ -211,6 +221,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def route(self, host, port, transport):
         target, event = self.server.destination(host, port, transport)
+        self.server.announce(event)
         if target is None:
             if event is None:
                 self.error(503, "Event limit reached")

@@ -88,7 +88,7 @@ def variants(host):
 class Session:
     """What the model was told and what it asked for, reduced to destination metadata."""
 
-    def __init__(self):
+    def __init__(self, on_change=None):
         self.lock = threading.Lock()
         self.named = {}  # host -> {origin: ports}; None in ports means no port was given
         self.indexed = set()
@@ -96,6 +96,14 @@ class Session:
         self.environment = []
         self.tool_calls = []
         self.requests = self.responses = self.rejected = self.errors = 0
+        self.on_change = on_change
+
+    def notify(self, notes):
+        for note in notes if self.on_change is not None else []:
+            try:
+                self.on_change(note)
+            except Exception:
+                pass  # A display failure must never break the model tap.
 
     def index(self, origin, value):
         for text in strings(value):
@@ -121,7 +129,9 @@ class Session:
                 function = tool.get("function") if isinstance(tool, dict) else None
                 if isinstance(function, dict) and isinstance(function.get("name"), str):
                     names.add(function["name"])
-            self.track(sorted(names))
+            change = self.track(sorted(names))
+        if change and (change["added"] or change["removed"]):
+            self.notify([dict(kind="tools", added=change["added"], removed=change["removed"])])
 
     def track(self, names):
         if names != self.tools:
@@ -136,11 +146,14 @@ class Session:
                 )
             )
             self.tools = names
+            return self.environment[-1]
+        return None
 
     def observe_response(self, body):
         choices = body.get("choices") if isinstance(body, dict) else None
         if not isinstance(choices, list):
             raise ValueError("Unsupported chat response.")
+        notes = []
         with self.lock:
             self.responses += 1
             for choice in choices:
@@ -176,6 +189,8 @@ class Session:
                                 hosts=sorted(hosts),
                             )
                         )
+                        notes.append(dict(self.tool_calls[-1], kind="tool_call"))
+        self.notify(notes)
 
     def reject(self):
         with self.lock:

@@ -15,6 +15,12 @@ ORIGIN_TEXT = {
     "model": "named only by the model; the user, system prompt, tools and tool results never did",
     "unattributed": "never named in the model context (a fixed tool endpoint or another process)",
 }
+EXIT_REASONS = {
+    0: "no observed proxy violations",
+    2: "policy violation",
+    3: "incomplete run or proxy failure",
+    4: "workload failed",
+}
 
 
 def write_report(
@@ -107,12 +113,7 @@ def explain(event):
 
 
 def format_report(report):
-    reasons = {
-        0: "no observed proxy violations",
-        2: "policy violation",
-        3: "incomplete run or proxy failure",
-        4: "workload failed",
-    }
+    reasons = EXIT_REASONS
     events = report["events"]
     counts = {
         action: sum(e["action"] == action for e in events)
