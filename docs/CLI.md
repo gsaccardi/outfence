@@ -4,6 +4,7 @@
 
 | Command | Behavior |
 |---|---|
+| `outfence` | In an interactive terminal, show a short menu: the demo, how to run an agent, or a new deny-all policy. Elsewhere, print usage |
 | `outfence --version` | Print version |
 | `outfence init [path]` | Write deny-all JSON policy; defaults to outfence.json; refuses overwrite |
 | `outfence init demo.json --demo` | Write the two-host synthetic demo policy |
@@ -19,6 +20,24 @@ Reports appear directly in the terminal. JSON evidence is saved under a new `run
 Both `demo` and `run` accept `--mode enforce|observe` (enforce by default) and `--output NEW_DIRECTORY`. `run` also accepts `--timeout SECONDS` (positive integer; default 60). Put all Outfence options before `--`. Command arguments after it go to your program. No shell expansion is performed by Outfence itself.
 
 The default demo uses reserved `.example` names mapped internally to localhost. Other allowed/observed destinations in your own `run` may make real network requests. `init` starts with an empty allowlist; do not copy the demo policy into production expecting it to authorize a real provider.
+
+## Terminal output
+
+In an interactive terminal, `demo` and `run` style their output:
+- The brand banner, with the mode and coverage, opens the run.
+- Each decision prints as it happens. With the model tap, so do changes in the offered tools and each tool call.
+- The final report has the same facts as the plain one, plus the goose pose for the outcome: blocking, alarm, approving or idle.
+
+Words always carry the meaning, and color only repeats it. Pipes, files and CI keep the plain report unchanged.
+
+| Variable | Effect |
+|---|---|
+| `NO_COLOR` | Any value turns styling off |
+| `OUTFENCE_COLOR` | `auto` (default: style terminals only), `always` or `never` |
+| `OUTFENCE_THEME` | `dark` or `light`; otherwise `COLORFGBG` decides, then dark |
+| `OUTFENCE_GOOSE` | `off` hides the goose |
+
+Colors use 24-bit escapes when `COLORTERM` is `truecolor` or `24bit`, and the nearest 256-color values otherwise. Names that come from the model or from tools are escaped before they reach the terminal.
 
 ## Policy
 

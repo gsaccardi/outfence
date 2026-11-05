@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an interactive terminal look, using the standard library only.
+  - The brand banner opens each run, and decisions print as they happen.
+  - The styled report ends with the goose pose for the outcome.
+  - `outfence` with no arguments shows a menu.
+  - Plain output for pipes, files and CI is unchanged. `NO_COLOR`, `OUTFENCE_COLOR`, `OUTFENCE_THEME` and `OUTFENCE_GOOSE` control the styling.
 - Add a model tap for local OpenAI-compatible servers (`run --model-upstream`) and destination provenance.
   - Each proxy decision records which source first named the host: the user, the system prompt, a tool definition, a tool result, or only the model.
   - Each decision also records the inferred tool call and, when the offered tools changed, a trigger candidate.

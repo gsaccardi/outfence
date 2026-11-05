@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -11,7 +12,7 @@ from contextlib import nullcontext
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from . import __version__
+from . import __version__, console
 from .demo import Fixture, demo_requests
 from .modeltap import ModelTap
 from .policy import DEMO_POLICY, load_policy
@@ -105,8 +106,50 @@ def parser():
     return result
 
 
+def notice(style, text, alarm=False):
+    if style.enabled:
+        text = "  " + style.paint(text, console.ACID if alarm else style.dim)
+    print(text, flush=True)
+
+
+def welcome(style):
+    """A short menu for people who type `outfence` in a terminal with no arguments."""
+    columns = shutil.get_terminal_size((80, 24)).columns
+    print("\n".join(["", *console.banner(style, f"{__version__} alpha", columns), ""]))
+    choices = [
+        ("1", "Watch Outfence block a request: the offline demo"),
+        ("2", "Run your agent through Outfence"),
+        ("3", "Create a deny-all policy here (outfence.json)"),
+        ("q", "Quit"),
+    ]
+    for key, text in choices:
+        print(f"  {style.paint(key, console.ACID, bold=True)}  {text}")
+    try:
+        choice = input("\n  Choose 1, 2, 3 or q: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return 0
+    if choice == "1":
+        return main(["demo"])
+    if choice == "3":
+        return main(["init"])
+    if choice == "2":
+        print(
+            "\n  Run any proxy-aware command against a policy:\n"
+            "    outfence run --policy outfence.json -- python3 my_agent.py\n\n"
+            "  Add your local model server to see who named each destination:\n"
+            "    outfence run --policy outfence.json --model-upstream http://127.0.0.1:11434"
+            " -- python3 my_agent.py\n"
+        )
+    return 0
+
+
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv and sys.stdin.isatty() and sys.stdout.isatty():
+        return welcome(console.detect(sys.stdout))
     args = parser().parse_args(argv)
+    style = console.detect(sys.stdout)
     try:
         if args.command == "init":
             data = DEMO_POLICY if args.demo else {"version": 1, "allow": []}
@@ -137,12 +180,19 @@ def main(argv=None):
         # Validate/reserve the output before starting a potentially side-effectful command.
         output.mkdir(parents=True, exist_ok=False, mode=0o700)
         coverage = "proxy + model tap" if upstream else "proxy only"
-        print(f"Outfence {__version__}, local proxy alpha, coverage: {coverage}", flush=True)
-        print("Direct connections can bypass this proxy. No OS/container isolation.", flush=True)
+        columns = shutil.get_terminal_size((80, 24)).columns
+        honest = "Direct connections can bypass this proxy. No OS/container isolation."
+        if style.enabled:
+            status = f"{__version__} alpha | {args.mode} | {coverage}"
+            print("\n".join(["", *console.banner(style, status, columns), ""]), flush=True)
+        else:
+            print(f"Outfence {__version__}, local proxy alpha, coverage: {coverage}", flush=True)
+        notice(style, honest)
         if args.mode == "observe":
-            print("OBSERVE: out-of-policy proxy requests may connect.", flush=True)
+            notice(style, "OBSERVE: out-of-policy proxy requests may connect.", alarm=True)
         if policy.get("allow_from") and not upstream:
-            print("allow_from needs --model-upstream; only exact allow rules apply.", flush=True)
+            notice(style, "allow_from needs --model-upstream; only exact allow rules apply.", True)
+        live = console.Live(style, sys.stdout) if style.enabled else None
         started, incomplete, workload_exit, session = now(), False, 0, None
         if args.command == "demo":
             fixture = LoopbackHTTPServer(("127.0.0.1", 0), Fixture)
@@ -152,7 +202,8 @@ def main(argv=None):
                     (host, 80): fixture.server_address
                     for host in ("model.example", "retrieval.example", "telemetry.example")
                 }
-                with Service(Proxy(policy, args.mode, routes)) as proxy:
+                announce = live.decision if live else None
+                with Service(Proxy(policy, args.mode, routes, on_decision=announce)) as proxy:
                     try:
                         demo_requests(proxy.server_port)
                     except (OSError, KeyboardInterrupt):
@@ -161,16 +212,17 @@ def main(argv=None):
                 f"  Fixture received {len(fixture.received)} connections (destination-side evidence)."
             )
         else:
-            session = Session() if upstream else None
+            session = Session(on_change=live.change if live else None) if upstream else None
+            announce = live.decision if live else None
             with (
                 Service(ModelTap(upstream, session)) if upstream else nullcontext() as tap,
-                Service(Proxy(policy, args.mode, session=session)) as proxy,
+                Service(Proxy(policy, args.mode, session=session, on_decision=announce)) as proxy,
             ):
                 env = {}
                 if tap is not None:
                     base = f"http://127.0.0.1:{tap.server_port}/v1"
                     env = {"OPENAI_BASE_URL": base, "OUTFENCE_MODEL_URL": base}
-                    print(f"Model tap: {base} -> {args.model_upstream}", flush=True)
+                    notice(style, f"Model tap: {base} -> {args.model_upstream}")
                 workload_exit, incomplete = run_workload(cmd, proxy, args.timeout, env)
         report = write_report(
             output,
@@ -185,8 +237,12 @@ def main(argv=None):
             dropped_events=proxy.dropped_events,
             model_tap=session.summary() if session else None,
         )
-        print(format_report(report))
-        print(f"JSON: {terminal_text((output / 'report.json').resolve())}")
+        evidence = terminal_text((output / "report.json").resolve())
+        if style.enabled:
+            print(console.render(style, report, evidence, columns))
+        else:
+            print(format_report(report))
+            print(f"JSON: {evidence}")
         return report["exit_code"]
     except (OSError, ValueError) as exc:
         print(f"Outfence setup error: {exc}", file=sys.stderr)

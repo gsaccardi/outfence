@@ -36,7 +36,7 @@ telemetry.example        HTTP 403
 Fixture received 2 connections (destination-side evidence).
 ```
 
-The CLI prints connection decisions, counts, exit status, and coverage limits directly in your terminal. It also saves `report.json` under `runs/`; no HTML is generated. **Exit 2 is expected:** the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
+The CLI prints connection decisions, counts, exit status, and coverage limits directly in your terminal. In an interactive terminal it prints each decision as it happens, and the report ends with the Capitoline goose in the pose that matches the outcome. Pipes, files and CI get the plain text report. It also saves `report.json` under `runs/`; no HTML is generated. **Exit 2 is expected:** the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
 
 Compare observation mode:
 
