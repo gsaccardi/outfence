@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Outfence: know where your agents connect</title>
+  <meta name="description" content="Outfence is a small open source CLI that checks an AI agent's proxy-routed outbound connections against an exact allowlist and keeps local evidence of every decision.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Outfence">
+  <meta property="og:description" content="Know where your agents connect.">
+  <meta property="og:url" content="https://gsaccardi.github.io/outfence/">
+  <meta property="og:image" content="https://gsaccardi.github.io/outfence/assets/social-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/mark-ink.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/avatar.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="top wrap">
+    <a class="brand" href="./" aria-label="Outfence home">
+      <picture>
+        <source srcset="assets/mark-white.svg" media="(prefers-color-scheme: dark)">
+        <img src="assets/mark-ink.svg" alt="" width="30" height="30">
+      </picture>
+      <span>outfence</span>
+    </a>
+    <nav aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#coverage">Coverage</a>
+      <a href="https://github.com/gsaccardi/outfence">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <p class="eyebrow">Open source alpha for people building AI agents</p>
+        <h1>Know where your agents connect.</h1>
+        <p class="lead">Outfence runs your agent behind a local proxy, checks every proxy-routed connection against an exact allowlist, and blocks or flags the rest. Each run leaves a terminal report and JSON evidence you can review.</p>
+        <div class="cta">
+          <a class="button" href="#try">Try the demo</a>
+          <a class="button ghost" href="https://github.com/gsaccardi/outfence">View on GitHub</a>
+        </div>
+        <p class="facts">Alpha 0.1.0a1, Apache-2.0, Python 3.10+, macOS and Linux, zero runtime dependencies</p>
+      </div>
+      <figure class="art hero-art">
+        <img src="assets/goose-alarm.svg" alt="A mosaic goose raising the alarm" width="400" height="320">
+      </figure>
+    </section>
+
+    <section class="story wrap">
+      <h2>Why a goose</h2>
+      <p>In 390 BC the Gauls climbed the Capitol at night. The guard dogs stayed silent, but the geese sacred to Juno raised the alarm, and Rome held. Agents can be quiet in the same way: a correct answer in the chat, while a tool call goes somewhere nobody asked for. Outfence records every destination your agent tries to reach through its proxy, so the quiet part is on the record.</p>
+    </section>
+
+    <section id="how" class="how wrap">
+      <h2>How it works</h2>
+      <ol class="steps">
+        <li>
+          <figure class="art"><img src="assets/goose-watching.svg" alt="" width="400" height="320"></figure>
+          <h3>Write a policy</h3>
+          <p>Exact host and port rules with an implicit default deny. Wildcards and ambiguous values are rejected.</p>
+          <pre><code>{
+  "version": 1,
+  "allow": [
+    {
+      "host": "api.example.com",
+      "port": 443
+    }
+  ]
+}</code></pre>
+        </li>
+        <li>
+          <figure class="art"><img src="assets/goose-blocking.svg" alt="" width="400" height="320"></figure>
+          <h3>Run your agent through it</h3>
+          <p>Enforce mode blocks destinations outside the allowlist. Observe mode lets them through and records them as would block.</p>
+          <pre><code>outfence run \
+  --policy outfence.json \
+  -- python3 my_agent.py</code></pre>
+        </li>
+        <li>
+          <figure class="art"><img src="assets/goose-approving.svg" alt="" width="400" height="320"></figure>
+          <h3>Read the evidence</h3>
+          <p>Decisions, counts and coverage limits print in your terminal. A JSON report stays on your machine, and exit codes fit CI.</p>
+          <dl class="codes">
+            <div><dt>0</dt><dd>Completed, no violations</dd></div>
+            <div><dt>2</dt><dd>Blocked or would block</dd></div>
+            <div><dt>3</dt><dd>Setup, transport or evidence problem</dd></div>
+            <div><dt>4</dt><dd>Workload failed</dd></div>
+          </dl>
+        </li>
+      </ol>
+    </section>
+
+    <section id="try" class="try wrap">
+      <div>
+        <h2>Try it in one minute</h2>
+        <p>No installation, Docker, API key, model or internet connection is needed. The demo starts temporary local services and makes real HTTP requests through the proxy.</p>
+        <p class="note">Exit 2 is expected: the demo deliberately attempts a blocked destination. Run it again with <code>--mode observe</code> to see the same request recorded as would block.</p>
+      </div>
+      <pre class="terminal" aria-label="Terminal session running the demo"><code><span class="prompt">$</span> git clone https://github.com/gsaccardi/outfence.git
+<span class="prompt">$</span> cd outfence
+<span class="prompt">$</span> python3 -m outfence demo
+model.example            HTTP 200
+retrieval.example        HTTP 200
+<span class="blocked">telemetry.example        HTTP 403</span>
+Fixture received 2 connections (destination-side evidence).</code></pre>
+    </section>
+
+    <section id="coverage" class="coverage wrap">
+      <h2>Honest about coverage</h2>
+      <p class="lead">Outfence is a local development proxy, not a network sandbox. Programs can ignore proxy settings and connect directly, and encrypted content is not inspected. Every report says what it could not see.</p>
+      <div class="cols">
+        <div>
+          <h3>Covered in this alpha</h3>
+          <ul>
+            <li>HTTP GET forwarding</li>
+            <li>CONNECT tunnels used by HTTPS clients</li>
+            <li>Exact destination rules and public address checks</li>
+            <li>Terminal decisions and local JSON evidence</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Outside coverage</h3>
+          <ul class="out">
+            <li>Direct sockets and clients that ignore proxy settings</li>
+            <li>TLS and content inspection</li>
+            <li>Tool and process attribution</li>
+            <li>Host isolation and Windows support</li>
+          </ul>
+        </div>
+      </div>
+      <p><a href="https://github.com/gsaccardi/outfence/blob/main/SECURITY.md">Read the security and coverage notes</a></p>
+    </section>
+
+    <section class="walkthrough wrap">
+      <figure class="art"><img src="assets/goose-idle.svg" alt="" width="400" height="320"></figure>
+      <div>
+        <h2>See it with a real agent</h2>
+        <p>In the walkthrough, a local Qwen model running in Ollama chooses two GitHub tools. Outfence permits the repository metadata and blocks the README until you change the policy. No API key is needed.</p>
+        <p><a class="button ghost" href="https://github.com/gsaccardi/outfence/blob/main/docs/OLLAMA-WALKTHROUGH.md">Open the walkthrough</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot wrap">
+    <p class="brand small-brand">
+      <picture>
+        <source srcset="assets/mark-white.svg" media="(prefers-color-scheme: dark)">
+        <img src="assets/mark-ink.svg" alt="" width="22" height="22">
+      </picture>
+      <span>outfence</span>
+    </p>
+    <p>Open source under Apache-2.0, built in the open at <a href="https://github.com/gsaccardi/outfence">github.com/gsaccardi/outfence</a>.</p>
+    <p class="fine">This page sets no cookies and makes no third-party requests. Type is IBM Plex, under the SIL Open Font License.</p>
+  </footer>
+</body>
+</html>
