@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Show a real terminal recording of `outfence demo` in the README. It is an animated SVG made by `scripts/terminal_svg.py`, which uses the standard library only and replaces local paths before rendering.
 - Add an interactive terminal look, using the standard library only.
   - The brand banner opens each run, and decisions print as they happen.
   - The styled report ends with the goose pose for the outcome.
