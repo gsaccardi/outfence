@@ -29,14 +29,9 @@ python3 -m outfence demo
 
 No installation, Docker, API key, model, or internet connection is needed for this demo. It starts temporary localhost services and makes real HTTP requests through the proxy:
 
-```text
-model.example            HTTP 200
-retrieval.example        HTTP 200
-telemetry.example        HTTP 403
-Fixture received 2 connections (destination-side evidence).
-```
+<p align="center"><img src="docs/assets/terminal-demo.svg" alt="outfence demo in a terminal: model.example and retrieval.example are allowed, telemetry.example:80 is blocked, and the report ends with the goose blocking it" width="100%"></p>
 
-The CLI prints connection decisions, counts, exit status, and coverage limits directly in your terminal. In an interactive terminal it prints each decision as it happens, and the report ends with the Capitoline goose in the pose that matches the outcome. Pipes, files and CI get the plain text report. It also saves `report.json` under `runs/`; no HTML is generated. **Exit 2 is expected:** the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
+The CLI prints connection decisions, counts, exit status, and coverage limits directly in your terminal. In an interactive terminal it prints each decision as it happens, and the report ends with the Capitoline goose in the pose that matches the outcome. Pipes, files and CI get the plain text report. The recording above is real `outfence demo` output, rendered with `scripts/terminal_svg.py`. It also saves `report.json` under `runs/`; no HTML is generated. **Exit 2 is expected:** the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
 
 Compare observation mode:
 
