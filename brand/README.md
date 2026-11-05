@@ -1,6 +1,6 @@
 # Outfence brand guide
 
-**Identity 03 · 5 November 2026**
+**Identity 03, 5 November 2026**
 
 ![Outfence identity 03](assets/brand-board.png)
 
@@ -83,7 +83,7 @@ Avoid "leak-proof," "sovereignty certified," "complete visibility" or "productio
 | README banner | [SVG](assets/banner.svg) | [PNG](assets/banner.png) | 1600 × 560 banner |
 | Social preview | [SVG](assets/social-preview.svg) | [PNG](assets/social-preview.png) | 1280 × 640 social card |
 | Brand board | [SVG](assets/brand-board.svg) | [PNG](assets/brand-board.png) | 1600 × 1050 identity overview |
-| Goose poses | [watching](assets/goose-watching.svg) · [alarm](assets/goose-alarm.svg) · [blocking](assets/goose-blocking.svg) · [approving](assets/goose-approving.svg) · [idle](assets/goose-idle.svg) | PNG alongside each | 400 × 320 transparent illustrations |
+| Goose poses | [watching](assets/goose-watching.svg), [alarm](assets/goose-alarm.svg), [blocking](assets/goose-blocking.svg), [approving](assets/goose-approving.svg), [idle](assets/goose-idle.svg) | PNG alongside each | 400 × 320 transparent illustrations |
 
 Machine-readable colors, typography and tile settings: [tokens.json](tokens.json). To rebuild the artwork, install Pillow and fontTools, download the four IBM Plex TTFs (Sans and Mono, each in Regular and Medium), and run this from the repository root:
 

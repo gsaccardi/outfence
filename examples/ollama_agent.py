@@ -166,7 +166,7 @@ def run_agent(model="qwen2.5:7b", chat=ollama_chat, fetch=fetch_public):
     attempted = set()
     outcomes = []
     for turn in range(4):
-        print(f"Model turn {turn + 1} · local inference (outside proxy coverage)", flush=True)
+        print(f"Model turn {turn + 1}: local inference (outside proxy coverage)", flush=True)
         message = chat(model, messages)
         if not isinstance(message, dict):
             raise AgentError("Invalid model response.")
@@ -206,7 +206,7 @@ def run_agent(model="qwen2.5:7b", chat=ollama_chat, fetch=fetch_public):
             result = fetch(name)
             outcomes.append({"tool": name, "ok": result.get("ok") is True})
             print(
-                f"Tool {name} · {'received data' if result.get('ok') else 'failed; see proxy report'}",
+                f"Tool {name}: {'received data' if result.get('ok') else 'failed; see proxy report'}",
                 flush=True,
             )
             messages.append({"role": "tool", "tool_name": name, "content": json.dumps(result)})

@@ -39,10 +39,10 @@ The model receives two tool definitions. Both have one validated `repo_name` arg
 Typical terminal sequence:
 
 ```text
-Model turn 1 · local inference (outside proxy coverage)
-Tool repository_info · received data
-Tool read_readme · failed; see proxy report
-Model turn 2 · local inference (outside proxy coverage)
+Model turn 1: local inference (outside proxy coverage)
+Tool repository_info: received data
+Tool read_readme: failed; see proxy report
+Model turn 2: local inference (outside proxy coverage)
 Agent answer: ...
 Exit 2: policy violation
 ```
