@@ -126,7 +126,7 @@ for i, pose in enumerate(POSES):
 c=Canvas(1600,560,PAPER)
 c.goose('alarm',40,110,1.1);c.text(520,318,'outfence',150,INK,-5,SANS_MEDIUM)
 c.text(526,390,TAGLINE,30,MUTED,-.3);c.rect(1454,62,74,6,ACCENT)
-c.text(80,512,'OPEN SOURCE · APACHE-2.0',15,MUTED,1.5,MONO)
+c.text(80,512,'OPEN SOURCE, APACHE-2.0',15,MUTED,1.5,MONO)
 c.save('banner','Outfence: '+TAGLINE)
 c=Canvas(1280,640,INK)
 c.goose('alarm',36,150,dark=True);c.text(452,350,'outfence',126,PAPER,-4,SANS_MEDIUM)
@@ -146,7 +146,7 @@ for i, (label, color) in enumerate([('ink',INK),('paper',PAPER),('acid',ACCENT),
 c.text(840,912,'IBM Plex Sans + IBM Plex Mono',20,INK,0,SANS_MEDIUM)
 c.text(840,936,'SIL Open Font License',12,MUTED,.5,MONO)
 c.text(64,1018,'THE GEESE OF THE CAPITOL',13,MUTED,1.4,MONO)
-c.text(1536,1018,'MONOCHROME FIRST · ACID FOR THE ALARM',13,MUTED,1,MONO,'right')
+c.text(1536,1018,'MONOCHROME FIRST, ACID FOR THE ALARM',13,MUTED,1,MONO,'right')
 c.save('brand-board','Outfence identity 03: mosaic goose mark, IBM Plex wordmark and goose poses')
 (ROOT/'brand/tokens.json').write_text(json.dumps({
     'name':'Outfence','identity_version':3,

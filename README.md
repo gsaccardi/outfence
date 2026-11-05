@@ -8,7 +8,7 @@ Outfence is a small, open source CLI that checks **proxy-routed outbound connect
 
 We're exploring how teams can **test AI agents against their deployment policies**, starting with outbound network dependencies. The question: before deploying or updating an agent, which external services does it need, and what happens when access is denied?
 
-**Alpha 0.1.0a1 · Apache-2.0 · Python 3.10+ · macOS/Linux · Zero runtime dependencies**
+**Alpha 0.1.0a1, Apache-2.0, Python 3.10+, macOS/Linux, zero runtime dependencies**
 
 > This is a local development proxy, **not a network sandbox**. Programs can ignore proxy settings and connect directly. Outfence does not prevent all data leaks, inspect encrypted content, or certify data residency. See [security and coverage](SECURITY.md).
 
@@ -144,8 +144,11 @@ We're investigating deployment checks for agents that teams build or adopt, star
 
 What evidence would your team need before deploying an agent? [Open an issue](https://github.com/gsaccardi/outfence/issues) with a synthetic or sanitized workflow, the decision you need to make, and what your current tools cannot show.
 
-- [CLI reference](docs/CLI.md) · [JSON format](docs/REPORT.md)
-- [Security](SECURITY.md) · [Architecture](docs/ARCHITECTURE.md)
-- [Changelog](CHANGELOG.md) · [Brand kit](brand/README.md)
+- [CLI reference](docs/CLI.md)
+- [JSON format](docs/REPORT.md)
+- [Security](SECURITY.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Changelog](CHANGELOG.md)
+- [Brand kit](brand/README.md)
 
 Licensed under [Apache-2.0](LICENSE). GitHub: [gsaccardi/outfence](https://github.com/gsaccardi/outfence). Package-registry and domain names have not been reserved.
