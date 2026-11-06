@@ -28,13 +28,14 @@ Events contain:
 - action: `allowed`, `blocked` or `would_block`
 - reason
 - connection: `not_attempted`, `established` or `failed`
-- origin, tool and trigger
+- origin, named_by, tool and trigger
 
 Malformed requests have unknown host/port to avoid leaking raw request input. `established` means a socket connected; it does not attest to a valid application response or successful agent task. HTTP forwarding failures may update it to failed.
 
-The last three fields are null without the model tap:
+The last four fields are null without the model tap:
 
-- **origin** is `user`, `system`, `tool_definition`, `tool_output`, `model` or `unattributed`.
+- **origin** is the source that named the host first: `user`, `system`, `tool_definition`, `tool_output` or `model`. It is `unattributed` when no source named the host. If any mention covers the requested port (a URL with that port, or a bare host name for ports 80 and 443), only those mentions count.
+- **named_by** lists every source that named the host, in order of its first mention. `allow_from` grants a destination only through an allowed source listed before `model`.
 - **tool** names the model tool call whose arguments named the host. It is inferred, not authenticated.
 - **trigger** is set only for model-originated destinations. It is the most recent tool-environment change: its servers, its tools, `seconds_before` the decision, and `at_start`.
 

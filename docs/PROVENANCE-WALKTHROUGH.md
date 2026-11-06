@@ -59,7 +59,7 @@ BLOCKED      docs.python.org:443
   tool call: mcp__fetch-mcp__request_url
 ```
 
-Outfence makes no judgment about intent here: a helpful guess and a call-home look the same. The point is that no trusted source asked for this host. To permit such destinations, add exact `allow` rules.
+Outfence makes no judgment about intent here: a helpful guess and a call-home look the same. The point is that no trusted source named this host. To permit such destinations, add exact `allow` rules.
 
 ## 3. A server that appears mid-session
 
@@ -85,7 +85,7 @@ If a model fetched an unrequested destination after the change, the blocked even
 | Activity | Coverage |
 |---|---|
 | Chat completions between the agent and the local model | Observed through the model tap; only host names, tool names and counts are kept |
-| Destinations in the user, system, tool-definition, tool-result or model text | Matched as text; the most trusted naming source wins |
+| Destinations in the user, system, tool-definition, tool-result or model text | Matched as text; the source that named the host first is its origin. A host the model named first is never allowed through `allow_from`, even when a later message repeats it |
 | HTTPS connections made by the MCP tool | Decided by exact rules, then `allow_from`; blocked before DNS when denied |
 | Prompt, answer and tool-result text | Not stored in the report |
 | Streaming responses, hosted model APIs, direct sockets | Outside coverage |

@@ -45,7 +45,7 @@ Colors use 24-bit escapes when `COLORTERM` is `truecolor` or `24bit`, and the ne
 
 CONNECT and HTTP GET both use the same host/port rules; a rule does not restrict payload protocol or API paths.
 
-An optional `allow_from` array also permits hosts that a trusted source named in the model's context: `user`, `system`, `tool_definition`, or `tool_output`. `model` is never accepted, so the model's own output cannot authorize a destination. A URL grants its own port; a bare host name grants ports 80 and 443. `allow_from` requires `--model-upstream`; without it, only exact rules apply and the run prints a warning.
+An optional `allow_from` array also permits hosts that a trusted source named in the model's context: `user`, `system`, `tool_definition`, or `tool_output`. `model` is never accepted, so the model's own output cannot authorize a destination. A source counts only if it named the host before the model did, so a later user or system message that repeats the model's words, such as a sub-agent's task or a conversation summary, does not authorize it. A URL grants its own port; a bare host name grants ports 80 and 443. `allow_from` requires `--model-upstream`; without it, only exact rules apply and the run prints a warning.
 
 ```json
 {"version": 1, "allow": [], "allow_from": ["user"]}
@@ -55,7 +55,7 @@ An optional `allow_from` array also permits hosts that a trusted source named in
 
 `--model-upstream http://127.0.0.1:PORT` starts a loopback reverse proxy for a local OpenAI-compatible server (Ollama, mlx-lm, llama.cpp, vLLM). The workload receives its address as `OPENAI_BASE_URL` and `OUTFENCE_MODEL_URL` and must call it directly, not through the HTTP proxy. Only `POST /v1/chat/completions` without streaming is observed; `GET /v1/models` is forwarded. Requests or answers the tap cannot read are refused rather than forwarded, and a failed or unreadable model answer marks the run incomplete. Upstreams must be loopback `http://` addresses.
 
-For every proxy decision, the tap records which source first named the destination host. In trust order, that is the user, the system prompt, a tool definition, a tool result, or only the model. A host never named in the conversation is `unattributed`, which is typical for tools with fixed endpoints. The report also names the tool call whose arguments contained the host. For model-originated destinations, it names the most recent change in the offered tools as a trigger candidate. The terminal shows the candidate only when the tools changed after the first model request; the JSON always includes it.
+For every proxy decision, the tap records which source first named the destination host: the user, the system prompt, a tool definition, a tool result, or only the model. It also lists every source that named the host, in order. A host never named in the conversation is `unattributed`, which is typical for tools with fixed endpoints. The report also names the tool call whose arguments contained the host. For model-originated destinations, it names the most recent change in the offered tools as a trigger candidate. The terminal shows the candidate only when the tools changed after the first model request; the JSON always includes it.
 
 ## Outcomes and resource limits
 

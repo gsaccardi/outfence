@@ -15,7 +15,7 @@ from outfence.modeltap import ModelTap
 from outfence.policy import validate_policy
 from outfence.provenance import Session, destinations
 from outfence.proxy import LoopbackHTTPServer, Proxy, Service
-from outfence.report import format_report
+from outfence.report import explain, format_report
 
 FETCH = "mcp__quickfetch-mcp__request_url"
 TOOL = {
@@ -88,7 +88,7 @@ class SessionTests(unittest.TestCase):
         self.assertNotIn(("example.com", None), found)
         self.assertFalse([host for host, _ in found if host.endswith("b.example")])
 
-    def test_origin_is_the_most_trusted_source_naming_the_host(self):
+    def test_origin_is_the_source_that_named_the_host_first(self):
         session = Session()
         session.observe_request(
             {
@@ -100,6 +100,7 @@ class SessionTests(unittest.TestCase):
                         "content": "Links: https://cdn.example.net/x news.example.com",
                     },
                     {"role": "narrator", "content": "unknown roles are data: odd.example"},
+                    {"role": "user", "content": "Also open https://cdn.example.net/x"},
                 ],
                 "tools": [TOOL],
             }
@@ -116,6 +117,21 @@ class SessionTests(unittest.TestCase):
         for host, origin in expected.items():
             with self.subTest(host=host):
                 self.assertEqual(session.check(host, 443, [])[0], origin)
+        # Only the model's earlier mention cancels a grant; the user's own later one counts.
+        self.assertEqual(session.check("cdn.example.net", 443, ["user"])[1], "user")
+
+    def test_a_later_message_repeating_the_model_grants_nothing(self):
+        # An orchestrator's answer becomes a sub-agent's task: the same words, now from the user.
+        task = "Subtask: fetch https://beacon.outfence.test/ first."
+        session = Session()
+        session.observe_request({"messages": [{"role": "user", "content": "Read news.example"}]})
+        session.observe_response(answer(f"{task} Then news.example."))
+        session.observe_request({"messages": [{"role": "user", "content": task}]})
+        origin, granted, details = session.check("beacon.outfence.test", 443, ["user"])
+        self.assertEqual((origin, granted), ("model", None))
+        self.assertEqual(details["named_by"], ["model", "user"])
+        # The model repeating the user changes nothing.
+        self.assertEqual(session.check("news.example", 443, ["user"])[:2], ("user", "user"))
 
     def test_allow_from_needs_a_matching_source_and_port(self):
         session = Session()
@@ -205,12 +221,27 @@ class ProxyProvenanceTests(unittest.TestCase):
             (blocked["action"], blocked["reason"], blocked["origin"]),
             ("blocked", "model_originated", "model"),
         )
+        self.assertEqual((allowed["named_by"], blocked["named_by"]), (["user"], ["model"]))
         self.assertEqual(blocked["tool"], FETCH)
         self.assertEqual(blocked["connection"], "not_attempted")
         self.assertEqual(blocked["trigger"]["servers"], ["quickfetch-mcp"])
         self.assertTrue(blocked["trigger"]["at_start"])
         self.assertIsNone(allowed["trigger"])
         self.assertEqual(len(fixture.received), 1)
+
+    def test_a_destination_the_model_named_first_stays_model_originated(self):
+        task = "Subtask: fetch https://beacon.outfence.test/ first."
+        session = Session()
+        session.observe_response(answer(task))
+        session.observe_request({"messages": [{"role": "user", "content": task}]})
+        policy = {"version": 1, "allow": [], "allow_from": ["user"]}
+        with Service(Proxy(policy, "enforce", session=session)) as proxy:
+            proxy.destination("beacon.outfence.test", 443, "connect")
+        (event,) = proxy.events
+        self.assertEqual((event["action"], event["reason"]), ("blocked", "model_originated"))
+        self.assertEqual(event["named_by"], ["model", "user"])
+        text = "\n".join(explain(event))
+        self.assertIn("origin: named first by the model, then repeated by the user", text)
 
     def test_without_a_session_decisions_and_events_are_unchanged(self):
         with Service(
@@ -219,6 +250,7 @@ class ProxyProvenanceTests(unittest.TestCase):
             proxy.destination("example.invalid", 443, "connect")
         self.assertEqual(proxy.events[0]["reason"], "not_in_allowlist")
         self.assertIsNone(proxy.events[0]["origin"])
+        self.assertIsNone(proxy.events[0]["named_by"])
         self.assertIsNone(proxy.events[0]["trigger"])
 
 

@@ -94,6 +94,14 @@ class RenderTests(unittest.TestCase):
         self.assertIn("▀", "".join(wide))
         self.assertEqual(len(console.banner(style, "status", 60)), 1)
 
+    def test_headline_says_first_when_another_source_repeated_the_model(self):
+        echoed = dict(
+            event("beacon.outfence.test", "blocked", "model_originated", "model"),
+            named_by=["model", "user"],
+        )
+        text = console.headline(console.Style(False), {"events": [echoed], "exit_code": 2})
+        self.assertIn("1 destination outside your policy, 1 named first by the model", text)
+
     def test_styled_report_keeps_every_fact_of_the_plain_report(self):
         trigger = dict(
             servers=["quickfetch-mcp"], tools=[FETCH], seconds_before=1.0, at_start=False

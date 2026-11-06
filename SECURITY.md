@@ -21,8 +21,8 @@ Before an upstream connection it checks resolved IP addresses and rejects non-pu
 
 With `--model-upstream`, a second loopback listener forwards non-streaming chat completions to a local model server. It records which source named each destination host. Use it as evidence, not as a boundary.
 
-- **Textual matching:** a host counts as named only when it appears literally in the model's context. A model can launder a destination through a source it controls, such as a tool result it caused. That is why `tool_output` is not allowed by default. A host spelled differently is not matched.
-- **The harness is trusted:** message roles come from the harness. A harness that mislabels model output as user text defeats provenance.
+- **Textual matching:** a host counts as named whenever it appears literally in the model's context, even in an instruction such as "never contact example.com". A host spelled differently is not matched. A host the model named first is never allowed through `allow_from`, even when a later message repeats it, such as a sub-agent's task, a conversation summary or a tool result the model caused. That check is textual too: a model can spell a host differently and have a tool or another agent assemble it. That is why `tool_output` is not allowed by default.
+- **The harness is trusted:** message roles come from the harness. Text the tap never saw as model output, such as a reply from a hosted model or tool output placed in a user message, counts as whatever role the harness gives it.
 - **Unauthenticated listener:** the tap binds to 127.0.0.1 without authentication, like the proxy. Other local processes can use it while it is active.
 - **Inferred attribution:** tool attribution and trigger candidates are inferred from tool-call arguments and changes in the offered tools. They are correlations, not proof that a tool or a server caused a request.
 - **Fails closed:** unreadable model answers are refused, not forwarded. Streaming and other API shapes are rejected.

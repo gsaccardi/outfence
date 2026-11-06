@@ -105,7 +105,7 @@ python3 -m outfence run --policy examples/ollama-policy.json --timeout 300 -- py
 
 ## See where a destination came from (preview)
 
-An agent reaches the network through tools that the model chooses to call. With `--model-upstream`, Outfence also sits between the agent and a **local** OpenAI-compatible model server (Ollama, mlx-lm, llama.cpp, vLLM). For every destination it records which source first named the host: the user, the system prompt, a tool definition, a tool result, or **only the model**. A policy can then allow hosts the user asked for. The model's own output never authorizes a destination.
+An agent reaches the network through tools that the model chooses to call. With `--model-upstream`, Outfence also sits between the agent and a **local** OpenAI-compatible model server (Ollama, mlx-lm, llama.cpp, vLLM). For every destination it records which source first named the host: the user, the system prompt, a tool definition, a tool result, or **only the model**. A policy can then allow hosts the user named. The model's own output never authorizes a destination, even when a later message repeats it, as when an orchestrator hands its words to a sub-agent.
 
 ```sh
 python3 -m outfence run --policy examples/provenance-policy.json \

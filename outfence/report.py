@@ -15,6 +15,12 @@ ORIGIN_TEXT = {
     "model": "named only by the model; the user, system prompt, tools and tool results never did",
     "unattributed": "never named in the model context (a fixed tool endpoint or another process)",
 }
+SOURCE_TEXT = {
+    "user": "the user",
+    "system": "the system prompt",
+    "tool_definition": "a tool definition",
+    "tool_output": "a tool result",
+}
 EXIT_REASONS = {
     0: "no observed proxy violations",
     2: "policy violation",
@@ -97,7 +103,12 @@ def explain(event):
     origin = event.get("origin")
     if not origin:
         return []
-    lines = [f"  origin: {ORIGIN_TEXT.get(origin, terminal_text(origin))}"]
+    text = ORIGIN_TEXT.get(origin, terminal_text(origin))
+    later = [SOURCE_TEXT.get(o, terminal_text(o)) for o in (event.get("named_by") or [])[1:]]
+    if origin == "model" and later:
+        # Repeating the model's words, as in a sub-agent's task, does not authorize the host.
+        text = f"named first by the model, then repeated by {' and '.join(later)}"
+    lines = [f"  origin: {text}"]
     if event.get("tool"):
         lines.append(f"  tool call: {terminal_text(event['tool'])}")
     trigger = event.get("trigger")
