@@ -87,6 +87,7 @@ class Proxy(LoopbackHTTPServer):
             connection="not_attempted",
             tool=None,
             origin=None,
+            named_by=None,
             trigger=None,
         )
         event.update(details)

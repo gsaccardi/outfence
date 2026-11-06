@@ -213,8 +213,9 @@ def headline(style, report):
     events = report["events"]
     blocked = sum(e["action"] == "blocked" for e in events)
     would = sum(e["action"] == "would_block" for e in events)
-    model = sum(e.get("origin") == "model" and e["action"] != "allowed" for e in events)
-    by_model = f", {model} named only by the model" if model else ""
+    model = [e for e in events if e.get("origin") == "model" and e["action"] != "allowed"]
+    only = all(len(e.get("named_by") or ()) <= 1 for e in model)
+    by_model = f", {len(model)} named {'only' if only else 'first'} by the model" if model else ""
     if blocked:
         return f"{label(style, 'blocked')}{plural(blocked, 'destination')} outside your policy{by_model}"
     if would:

@@ -1,4 +1,4 @@
-"""Model-context provenance: which source named a destination before the agent used it.
+"""Model-context provenance: which source named a destination first, before the agent used it.
 
 Host names are matched as text in the chat requests and responses seen by the model tap.
 Only derived metadata is retained; prompts, answers and tool results are not stored.
@@ -11,7 +11,7 @@ import threading
 import time
 from urllib.parse import urlsplit
 
-from .policy import ORIGINS, normalize_host
+from .policy import normalize_host
 from .proxy import now
 
 # Unknown roles count as untrusted data, never as user intent.
@@ -90,8 +90,10 @@ class Session:
 
     def __init__(self, on_change=None):
         self.lock = threading.Lock()
-        self.named = {}  # host -> {origin: ports}; None in ports means no port was given
+        # host -> {origin: {port: order of the first mention}}; port None means no port was given
+        self.named = {}
         self.indexed = set()
+        self.order = 0
         self.tools = None
         self.environment = []
         self.tool_calls = []
@@ -110,8 +112,10 @@ class Session:
             digest = hashlib.sha256(f"{origin}\0{text}".encode("utf-8", "replace")).digest()
             if digest not in self.indexed:
                 self.indexed.add(digest)
+                self.order += 1
                 for host, port in destinations(text):
-                    self.named.setdefault(host, {}).setdefault(origin, set()).add(port)
+                    ports = self.named.setdefault(host, {}).setdefault(origin, {})
+                    ports.setdefault(port, self.order)
 
     def observe_request(self, body):
         messages, tools = body.get("messages"), body.get("tools") or []
@@ -201,28 +205,31 @@ class Session:
             self.errors += 1
 
     def check(self, host, port, allow_from):
-        """Return (origin, allowing origin or None, details) for one proxy decision."""
+        """Return (origin, allowing origin or None, details) for one proxy decision.
+
+        The origin is the source that named the host first. An allowed source grants the
+        destination only if it named it before the model did, so a later message repeating
+        the model's words, such as a sub-agent's task or a conversation summary, grants nothing.
+        """
         moment = time.monotonic()
         names = variants(host)
         with self.lock:
-            found = {}
-            for name in names:
-                for origin, ports in self.named.get(name, {}).items():
-                    found.setdefault(origin, set()).update(ports)
-            named = [(origin, found[origin]) for origin in ORIGINS if origin in found]
+            mentions = sorted(
+                (order, origin, given == port or (given is None and port in (80, 443)))
+                for name in names
+                for origin, ports in self.named.get(name, {}).items()
+                for given, order in ports.items()
+            )
             call = next((c for c in reversed(self.tool_calls) if names & set(c["hosts"])), None)
             change = next((e for e in reversed(self.environment) if e["added"]), None)
-        granted = next(
-            (
-                origin
-                for origin, ports in named
-                if origin in allow_from and (port in ports or (None in ports and port in (80, 443)))
-            ),
-            None,
-        )
-        origin = named[0][0] if named else "unattributed"
+        covering = [origin for _, origin, covers in mentions if covers]
+        named_by = list(dict.fromkeys(covering or [origin for _, origin, _ in mentions]))
+        # In order of mention, the first allowed source grants, unless the model came first.
+        first = next((o for o in covering if o == "model" or o in allow_from), None)
+        granted = None if first == "model" else first
+        origin = named_by[0] if named_by else "unattributed"
         trigger = None
-        # A trigger candidate only explains destinations that no trusted source named.
+        # A trigger candidate only explains destinations that the model named first.
         if origin == "model" and change is not None:
             trigger = dict(
                 servers=servers(change["added"]),
@@ -230,7 +237,8 @@ class Session:
                 seconds_before=round(moment - change["clock"], 1),
                 at_start=change["initial"],
             )
-        return origin, granted, dict(tool=call["name"] if call else None, trigger=trigger)
+        tool = call["name"] if call else None
+        return origin, granted, dict(tool=tool, trigger=trigger, named_by=named_by)
 
     def summary(self):
         with self.lock:
