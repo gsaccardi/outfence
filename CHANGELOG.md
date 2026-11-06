@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.1.0a2 - second alpha, first PyPI release
+
+- Publish releases to PyPI from GitHub Actions with Trusted Publishing, so no API token is stored. The release workflow runs the tests, requires the tag to match the package version, and smoke-tests the wheel.
+- Use absolute links and images in the README, so the PyPI project page renders it.
 - Show a real terminal recording of `outfence demo` in the README. It is an animated SVG made by `scripts/terminal_svg.py`, which uses the standard library only and replaces local paths before rendering.
 - Add an interactive terminal look, using the standard library only.
   - The brand banner opens each run, and decisions print as they happen.

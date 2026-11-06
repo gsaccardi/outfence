@@ -30,3 +30,11 @@ Report normal bugs with the issue template. Follow [SECURITY.md](SECURITY.md) fo
 By submitting a contribution, you agree that it is provided under this repository's Apache-2.0 license. No additional CLA is required. Source files, tests, documentation, and generated artwork are included under that license; bundled third-party fonts are not distributed.
 
 The Ollama walkthrough has deterministic CI tests. Live model tests are manual and require an installed local model; do not add credentials, model downloads, or public API calls to CI.
+
+## Releasing
+
+Releases go to PyPI through Trusted Publishing: PyPI trusts the `Release` workflow's GitHub identity, so no API token exists anywhere.
+
+1. One-time setup: on PyPI, under Publishing, add a publisher for project `outfence` with owner `gsaccardi`, repository `outfence`, workflow `release.yml` and environment `pypi`. Before the first release this is a pending publisher.
+2. Bump `__version__` in `outfence/__init__.py`, move the `Unreleased` changelog entries under the new version, and merge.
+3. Publish a GitHub release whose tag is `v` plus the version, for example `v0.1.0a2`. The workflow runs the tests, refuses a tag that does not match the version, builds, smoke-tests the installed wheel and publishes.
