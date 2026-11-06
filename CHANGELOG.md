@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0a3 - third alpha
+
 - Attribute each destination to the source that named it first, and let `allow_from` grant a host only through a source that named it before the model did. A later message that repeats the model's words, such as a sub-agent's task or a conversation summary, no longer authorizes the destination. Events add `named_by`, the sources that named the host in order.
 
 ## 0.1.0a2 - second alpha, first PyPI release

@@ -8,7 +8,7 @@ Outfence is a small, open source CLI that checks **proxy-routed outbound connect
 
 We're exploring how teams can **test AI agents against their deployment policies**, starting with outbound network dependencies. The question: before deploying or updating an agent, which external services does it need, and what happens when access is denied?
 
-**Alpha 0.1.0a2, Apache-2.0, Python 3.10+, macOS/Linux, zero runtime dependencies**
+**Alpha 0.1.0a3, Apache-2.0, Python 3.10+, macOS/Linux, zero runtime dependencies**
 
 > This is a local development proxy, **not a network sandbox**. Programs can ignore proxy settings and connect directly. Outfence does not prevent all data leaks, inspect encrypted content, or certify data residency. See [security and coverage](https://github.com/gsaccardi/outfence/blob/main/SECURITY.md).
 
