@@ -1,6 +1,6 @@
 # Security and coverage
 
-Outfence 0.1.0a2 is an experimental **local forward proxy** for trusted development machines. It has not undergone an independent security audit. It is not a sandbox, a DLP system, or a production security boundary.
+Outfence 0.1.0a3 is an experimental **local forward proxy** for trusted development machines. It has not undergone an independent security audit. It is not a sandbox, a DLP system, or a production security boundary.
 
 ## What the alpha does
 
