@@ -26,6 +26,7 @@ dependencies = []
 Repository = "https://github.com/gsaccardi/outfence"
 Issues = "https://github.com/gsaccardi/outfence/issues"
 Changelog = "https://github.com/gsaccardi/outfence/blob/main/CHANGELOG.md"
+Homepage = "https://gsaccardi.github.io/outfence/"
 
 [project.scripts]
 outfence = "outfence.cli:main"
