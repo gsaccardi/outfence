@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0a4 - fourth alpha
+
 - Add `outfence demo --backdoor`. A scripted stand-in for a backdoored model calls a destination nobody named once an MCP server appears, and the report shows the block, the origin and the trigger candidate. It runs offline and no real model is involved. `outfence` with no arguments lists it in the menu.
 - Pass model calls through the proxy to the model tap. Clients that honor proxy settings send their chat completions to the proxy, which used to refuse them with 501, so `--model-upstream` saw nothing. Requests for the tap's own address are now passed on to it, as plain HTTP or through a tunnel. Every other loopback address stays blocked.
 - Read a bare name with a common file extension as a file, not a host. `readme.md` and `install.sh` are valid domain names, so mentioning a file could authorize a host through `allow_from`. Only a URL names such a host now. This covers `ac`, `am`, `cc`, `md`, `mk`, `ml`, `mov`, `py`, `rs`, `sh`, `so`, `tf` and `zip`.

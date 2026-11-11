@@ -6,7 +6,7 @@
 
 Outfence is a small, open source CLI that sits on an AI agent's way out. It checks **proxy-routed outbound connections** against a policy and keeps a terminal report and local JSON evidence. With a local model it also records **who named each destination**: the user, the system prompt, a tool, or only the model. A destination that only the model named is blocked before DNS resolution, and the report says why.
 
-**Alpha 0.1.0a3, Apache-2.0, Python 3.10+, macOS/Linux, zero runtime dependencies**
+**Alpha 0.1.0a4, Apache-2.0, Python 3.10+, macOS/Linux, zero runtime dependencies**
 
 > This is a local development proxy, **not a network sandbox**. Programs can ignore proxy settings and connect directly. Outfence does not prevent all data leaks, inspect encrypted content, or certify data residency. See [security and coverage](https://github.com/gsaccardi/outfence/blob/main/SECURITY.md).
 

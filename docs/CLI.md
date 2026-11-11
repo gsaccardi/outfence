@@ -1,4 +1,4 @@
-# CLI reference - 0.1.0a3
+# CLI reference - 0.1.0a4
 
 `outfence` and `python -m outfence` are equivalent. Run `--help` or `SUBCOMMAND --help` for argument details.
 
