@@ -14,9 +14,25 @@ from urllib.parse import urlsplit
 
 from .policy import normalize_host, validate_policy
 
+# Seconds a local model may take to answer; the model tap and the relay to it wait this long.
+MODEL_TIMEOUT = 300
+
 
 def now():
     return dt.datetime.now(dt.timezone.utc).isoformat()
+
+
+def origin_form(parsed):
+    """Path and query for an upstream request line; an empty path is the root."""
+    return (parsed.path or "/") + ("?" + parsed.query if parsed.query else "")
+
+
+def content_length(response):
+    """The declared body length, or None when absent, malformed or made moot by chunked coding."""
+    value = response.getheader("Content-Length", "")
+    if response.getheader("Transfer-Encoding") or not (value.isascii() and value.isdigit()):
+        return None
+    return int(value)
 
 
 class LoopbackHTTPServer(ThreadingHTTPServer):
@@ -31,7 +47,14 @@ class Proxy(LoopbackHTTPServer):
     daemon_threads = True
 
     def __init__(
-        self, policy, mode, fixtures=None, max_events=10000, session=None, on_decision=None
+        self,
+        policy,
+        mode,
+        fixtures=None,
+        max_events=10000,
+        session=None,
+        on_decision=None,
+        tap=None,
     ):
         if mode not in ("enforce", "observe"):
             raise ValueError("Mode must be enforce or observe.")
@@ -42,6 +65,9 @@ class Proxy(LoopbackHTTPServer):
         # Model-tap provenance; without it, decisions use exact allow rules only.
         self.session = session
         self.on_decision = on_decision
+        # This run's model tap. Clients that honor proxy settings send their model calls here,
+        # so requests for exactly that address are passed to the tap, not decided or recorded.
+        self.tap = tap
         self.events = []
         self.lock = threading.RLock()
         self.stopping = threading.Event()
@@ -230,6 +256,44 @@ class Handler(BaseHTTPRequestHandler):
                 self.error(403 if event["action"] == "blocked" else 502, event["reason"])
         return target, event
 
+    def for_tap(self, host, port):
+        """True for this run's model tap, the one loopback address the proxy passes on."""
+        tap = self.server.tap
+        return tap is not None and port == tap[1] and host in ("127.0.0.1", "localhost")
+
+    def pipe(self, upstream, idle):
+        """Copy bytes both ways until one side closes. False: nothing moved for idle seconds."""
+        while not self.server.stopping.is_set():
+            ready, _, _ = select.select([self.connection, upstream], [], [], idle)
+            if not ready:
+                return False
+            for source in ready:
+                chunk = source.recv(65536)
+                if not chunk:
+                    return True
+                (upstream if source is self.connection else self.connection).sendall(chunk)
+        return True
+
+    def relay_to_tap(self, parsed):
+        """Hand one plain-HTTP request to the model tap, which inspects it, and pipe the answer."""
+        lines = [f"{self.command} {origin_form(parsed)} HTTP/1.0"]
+        for key in ("Content-Type", "Content-Length", "Transfer-Encoding", "Authorization"):
+            value = self.headers.get(key)
+            if value and "\r" not in value and "\n" not in value:
+                lines.append(f"{key}: {value}")
+        try:
+            upstream = self.server.connect(self.server.tap, None)
+        except OSError:
+            return self.error(502, "Model tap unavailable")
+        try:
+            upstream.sendall("\r\n".join([*lines, "", ""]).encode("latin-1"))
+            # Any body is still unread on the client socket. The tap answers, then closes.
+            self.pipe(upstream, MODEL_TIMEOUT)
+        except (OSError, ValueError):
+            pass  # The client sees a closed connection; the tap counts its own failures.
+        finally:
+            self.server.close_upstream(upstream)
+
     def do_CONNECT(self):
         try:
             parsed = urlsplit("//" + self.path)
@@ -244,7 +308,8 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError()
         except ValueError:
             return self.invalid()
-        target, event = self.route(host, port, "connect")
+        tap = self.for_tap(host, port)
+        target, event = (self.server.tap, None) if tap else self.route(host, port, "connect")
         if target is None:
             return
         upstream = None
@@ -256,22 +321,25 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
             established = True
             # Opaque byte stream: no TLS inspection, request/body parsing or logging.
-            while not self.server.stopping.is_set():
-                ready, _, _ = select.select([self.connection, upstream], [], [], 15)
-                if not ready:
-                    self.server.update(event, connection="failed", reason="tunnel_idle_timeout")
-                    break
-                for source in ready:
-                    chunk = source.recv(65536)
-                    if not chunk:
-                        return
-                    (upstream if source is self.connection else self.connection).sendall(chunk)
+            if not self.pipe(upstream, MODEL_TIMEOUT if tap else 15):
+                self.server.update(event, connection="failed", reason="tunnel_idle_timeout")
         except (OSError, ValueError):
             self.server.update(event, connection="failed", reason="connection_failed")
             if not established:
                 self.error(502, "Upstream connection failed")
         finally:
             self.server.close_upstream(upstream)
+
+    def do_POST(self):
+        try:
+            parsed = urlsplit(self.path)
+            tap = parsed.scheme == "http" and self.for_tap(parsed.hostname, parsed.port)
+        except ValueError:
+            tap = False
+        if tap:
+            return self.relay_to_tap(parsed)
+        # Refused and recorded like every other method the proxy does not forward.
+        self.send_error(501)
 
     def do_GET(self):
         try:
@@ -292,6 +360,8 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError()
         except ValueError:
             return self.invalid()
+        if self.for_tap(host, port):
+            return self.relay_to_tap(parsed)
         target, event = self.route(host, port, "http")
         if target is None:
             return
@@ -304,19 +374,27 @@ class Handler(BaseHTTPRequestHandler):
             authority = f"[{host}]" if ":" in host else host
             conn.request(
                 "GET",
-                parsed.path + ("?" + parsed.query if parsed.query else "") or "/",
+                origin_form(parsed),
                 headers={"Host": f"{authority}:{port}", "Connection": "close"},
             )
             response = conn.getresponse()
+            declared = content_length(response)
             self.send_response(response.status)
             for key in ("Content-Type", "Location"):
                 value = response.getheader(key)
                 if value and "\r" not in value and "\n" not in value:
                     self.send_header(key, value)
+            if declared is not None:
+                self.send_header("Content-Length", str(declared))
             self.end_headers()
             headers_sent = True
+            sent = 0
             while chunk := response.read(65536):
                 self.wfile.write(chunk)
+                sent += len(chunk)
+            if declared is not None and sent < declared and response.status not in (204, 304):
+                # The upstream closed early. The client sees a short body; the report must too.
+                raise http.client.IncompleteRead(b"")
         except (OSError, http.client.HTTPException):
             self.server.update(event, connection="failed", reason="connection_failed")
             if not headers_sent:

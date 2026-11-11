@@ -235,6 +235,8 @@ class CliTests(unittest.TestCase):
             patch.dict(os.environ, env),
             redirect_stdout(io.StringIO()) as out,
         ):
+            # NO_COLOR in the developer's own environment would win over the forced styling.
+            os.environ.pop("NO_COLOR", None)
             code = cli.main(["demo", "--output", str(Path(tmp) / "d")])
         text = console.ANSI.sub("", out.getvalue())
         self.assertEqual(code, 2)
@@ -249,7 +251,7 @@ class CliTests(unittest.TestCase):
             cwd = os.getcwd()
             os.chdir(tmp)
             try:
-                for answer, expected in [("q", 0), ("2", 0), ("3", 0)]:
+                for answer, expected in [("q", 0), ("2", 2), ("3", 0), ("4", 0)]:
                     with (
                         self.subTest(answer=answer),
                         patch("builtins.input", return_value=answer),

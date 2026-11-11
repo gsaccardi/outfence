@@ -116,9 +116,11 @@ def explain(event):
     if origin == "model" and event["action"] != "allowed" and trigger and not trigger["at_start"]:
         label = "MCP server" if trigger["servers"] else "tools"
         source = ", ".join(trigger["servers"] or trigger["tools"])
+        # The value is rounded to a tenth of a second, so a very fast model would read as zero.
+        seconds = trigger["seconds_before"]
+        elapsed = f"{seconds:g} s" if seconds >= 0.1 else "under 0.1 s"
         lines.append(
-            f"  trigger?: {label} {terminal_text(source)} appeared "
-            f"{trigger['seconds_before']:g} s before this request"
+            f"  trigger?: {label} {terminal_text(source)} appeared {elapsed} before this request"
         )
     return lines
 

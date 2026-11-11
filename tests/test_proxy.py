@@ -2,7 +2,9 @@ import http.client
 import json
 import socket
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 
 from outfence.cli import main
@@ -72,6 +74,55 @@ class ProxyTests(unittest.TestCase):
             response.read()
             conn.close()
             self.assertEqual(proxy.events[0]["reason"], "non_public_address")
+
+    def test_url_without_a_path_requests_the_root(self):
+        class Paths(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                self.server.received.append(self.path)
+                self.send_response(200)
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+        upstream = ThreadingHTTPServer(("127.0.0.1", 0), Paths)
+        upstream.received = []
+        routes = {("model.example", 80): upstream.server_address}
+        with Service(upstream), Service(Proxy(POLICY, "enforce", routes)) as proxy:
+            for url in ("http://model.example?x=1", "http://model.example"):
+                conn = http.client.HTTPConnection(*proxy.server_address, timeout=3)
+                conn.request("GET", url)
+                self.assertEqual(conn.getresponse().status, 200)
+                conn.close()
+        self.assertEqual(upstream.received, ["/?x=1", "/"])
+
+    def test_body_cut_short_by_the_upstream_is_a_failed_connection(self):
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+
+        def cut_short():
+            with listener.accept()[0] as conn:
+                conn.recv(4096)
+                conn.sendall(b"HTTP/1.0 200 OK\r\nContent-Length: 10\r\n\r\nabcd")
+
+        worker = threading.Thread(target=cut_short, daemon=True)
+        worker.start()
+        routes = {("model.example", 80): listener.getsockname()}
+        with Service(Proxy(POLICY, "enforce", routes)) as proxy:
+            conn = http.client.HTTPConnection(*proxy.server_address, timeout=3)
+            conn.request("GET", "http://model.example/")
+            response = conn.getresponse()
+            # The declared length is passed on, so the client can tell the body is short.
+            self.assertEqual(response.getheader("Content-Length"), "10")
+            with self.assertRaises(http.client.IncompleteRead):
+                response.read()
+            conn.close()
+        worker.join(2)
+        listener.close()
+        (event,) = proxy.events
+        self.assertEqual((event["connection"], event["reason"]), ("failed", "connection_failed"))
 
     def test_report_escapes_metadata_and_preserves_coverage(self):
         with tempfile.TemporaryDirectory() as tmp:
