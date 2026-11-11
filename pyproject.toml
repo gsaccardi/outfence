@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "outfence"
 dynamic = ["version"]
-description = "Inspect proxy-routed agent connections with local policies and offline reports"
+description = "Check where AI agents connect and who named each destination, with local policies and reports"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [{name = "Outfence contributors"}]
-keywords = ["ai-agents", "proxy", "network-policy", "developer-tools"]
+authors = [{name = "Giuseppe Saccardi"}]
+keywords = ["ai-agents", "ai-security", "mcp", "egress", "proxy", "network-policy", "developer-tools"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

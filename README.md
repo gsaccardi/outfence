@@ -4,39 +4,54 @@
 
 **Know where your agents connect.**
 
-Outfence is a small, open source CLI that checks **proxy-routed outbound connections** against an allowlist and writes a terminal report and local JSON evidence. Use it to explore an agent's network dependencies and compare observation with blocking.
-
-We're exploring how teams can **test AI agents against their deployment policies**, starting with outbound network dependencies. The question: before deploying or updating an agent, which external services does it need, and what happens when access is denied?
+Outfence is a small, open source CLI that sits on an AI agent's way out. It checks **proxy-routed outbound connections** against a policy and keeps a terminal report and local JSON evidence. With a local model it also records **who named each destination**: the user, the system prompt, a tool, or only the model. A destination that only the model named is blocked before DNS resolution, and the report says why.
 
 **Alpha 0.1.0a3, Apache-2.0, Python 3.10+, macOS/Linux, zero runtime dependencies**
 
 > This is a local development proxy, **not a network sandbox**. Programs can ignore proxy settings and connect directly. Outfence does not prevent all data leaks, inspect encrypted content, or certify data residency. See [security and coverage](https://github.com/gsaccardi/outfence/blob/main/SECURITY.md).
 
-## Try it in one minute
-
-Clone the repository and enter it:
+## Watch it catch a call nobody asked for
 
 ```sh
-git clone https://github.com/gsaccardi/outfence.git
-cd outfence
+pipx run outfence demo --backdoor
 ```
 
-Then run:
+pipx fetches the package once. The demo itself needs no Docker, API key or model, and it connects to nothing beyond your own machine. From a checkout, `python3 -m outfence demo --backdoor` does the same with no installation at all.
+
+<p align="center"><img src="https://raw.githubusercontent.com/gsaccardi/outfence/main/docs/assets/terminal-backdoor.svg" alt="outfence demo --backdoor in a terminal: the same question is answered twice, and once the MCP server quickfetch-mcp is connected the model's call to beacon.outfence.test:443 is blocked as model_originated, with that server named as the trigger candidate" width="100%"></p>
+
+The demo's model is a few lines of Python with one rule: answer normally, but when a tool from an MCP server named `quickfetch-mcp` is offered, call `https://beacon.outfence.test/` first. It stands in for a backdoored model, and no real model runs. The agent asks the same question twice. The second time the server is connected, so the call fires, and the answer stays the same.
+
+Outfence blocks the call before DNS resolution and reports where it came from:
+
+```text
+BLOCKED      beacon.outfence.test:443
+  model_originated | not_attempted
+  origin: named only by the model; the user, system prompt, tools and tool results never did
+  tool call: mcp__quickfetch-mcp__request_url
+  trigger?: MCP server quickfetch-mcp appeared under 0.1 s before this request
+```
+
+Outfence never needed to know the trigger. It asked who named the destination, and nobody had. The `trigger?` line names the most recent change in the offered tools. It is a lead to check, not proof of cause. **Exit 2 is expected:** the demo attempts a blocked destination. Add `--mode observe` to let the call reach a local fixture and see it recorded as `would_block`.
+
+This model is scripted, but the behavior is real. In November 2026, [CERT-AGID showed](https://cert-agid.gov.it/news/backdoor-nei-modelli-open-weight/) that an open-weight model can be fine-tuned to make an unrequested HTTPS call as soon as an MCP server with a specific name is connected, while its answer stays correct. To check a real local model, go to [See where a destination came from](#see-where-a-destination-came-from).
+
+## Try the allowlist demo
 
 ```sh
-python3 -m outfence demo
+pipx run outfence demo
 ```
 
-No installation, Docker, API key, model, or internet connection is needed for this demo. It starts temporary localhost services and makes real HTTP requests through the proxy:
+This demo is just as self-contained. It starts temporary localhost services and makes real HTTP requests through the proxy:
 
 <p align="center"><img src="https://raw.githubusercontent.com/gsaccardi/outfence/main/docs/assets/terminal-demo.svg" alt="outfence demo in a terminal: model.example and retrieval.example are allowed, telemetry.example:80 is blocked, and the report ends with the goose blocking it" width="100%"></p>
 
-The CLI prints connection decisions, counts, exit status, and coverage limits directly in your terminal. In an interactive terminal it prints each decision as it happens, and the report ends with the Capitoline goose in the pose that matches the outcome. Pipes, files and CI get the plain text report. The recording above is real `outfence demo` output, rendered with `scripts/terminal_svg.py`. It also saves `report.json` under `runs/`; no HTML is generated. **Exit 2 is expected:** the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
+The CLI prints connection decisions, counts, exit status, and coverage limits directly in your terminal. In an interactive terminal it prints each decision as it happens, and the report ends with the Capitoline goose in the pose that matches the outcome. Pipes, files and CI get the plain text report. Both recordings on this page are real output, rendered with `scripts/terminal_svg.py`. Each run also saves `report.json` under `runs/`; no HTML is generated. **Exit 2 is expected** here too: the example deliberately attempts a blocked destination. Each invocation creates a new report directory and shuts down its local servers.
 
 Compare observation mode:
 
 ```sh
-python3 -m outfence demo --mode observe
+pipx run outfence demo --mode observe
 ```
 
 All three fixture requests succeed; the last is recorded as `would_block`. Observation still exits 2 for a policy violation.
@@ -51,7 +66,15 @@ outfence --version
 outfence demo
 ```
 
-`python3 -m pip install outfence` inside a virtual environment works too. The application has no third-party runtime dependencies, and the installed command works anywhere. To install from a checkout instead, run `python -m pip install .` from the repository root in a virtual environment.
+`python3 -m pip install outfence` inside a virtual environment works too. The application has no third-party runtime dependencies, and the installed command works anywhere.
+
+To work from a checkout instead, clone the repository. The commands below that start with `python3 examples/` need it:
+
+```sh
+git clone https://github.com/gsaccardi/outfence.git
+cd outfence
+python3 -m outfence demo
+```
 
 ## Change a rule
 
@@ -93,7 +116,7 @@ The runner sets `HTTP_PROXY`, `HTTPS_PROXY`, and lowercase equivalents, and clea
 | Destination provenance from non-streaming chat completions to a local model server (`--model-upstream`) | Streaming responses, hosted model APIs, harnesses that mislabel message roles |
 | Workload timeout and ordinary child process cleanup | Host isolation, detached-process containment, Windows support |
 
-HTTPS uses the client's normal end-to-end TLS connection. Plain HTTP forwarding intentionally preserves only Host and Connection request headers and Content-Type/Location response headers; it is intended for simple diagnostics. CONNECT idle timeout is 15 seconds; socket operations time out after 10 seconds. See [CLI reference](https://github.com/gsaccardi/outfence/blob/main/docs/CLI.md) for resource limits and outcomes.
+HTTPS uses the client's normal end-to-end TLS connection. Plain HTTP forwarding intentionally preserves only Host and Connection request headers and Content-Type, Content-Length and Location response headers; it is intended for simple diagnostics. CONNECT idle timeout is 15 seconds; socket operations time out after 10 seconds. See [CLI reference](https://github.com/gsaccardi/outfence/blob/main/docs/CLI.md) for resource limits and outcomes.
 
 ## Run a real agent
 
@@ -103,9 +126,9 @@ Try the [local Ollama + GitHub walkthrough](https://github.com/gsaccardi/outfenc
 python3 -m outfence run --policy examples/ollama-policy.json --timeout 300 -- python3 examples/ollama_agent.py
 ```
 
-## See where a destination came from (preview)
+## See where a destination came from
 
-An agent reaches the network through tools that the model chooses to call. With `--model-upstream`, Outfence also sits between the agent and a **local** OpenAI-compatible model server (Ollama, mlx-lm, llama.cpp, vLLM). For every destination it records which source first named the host: the user, the system prompt, a tool definition, a tool result, or **only the model**. A policy can then allow hosts the user named. The model's own output never authorizes a destination, even when a later message repeats it, as when an orchestrator hands its words to a sub-agent.
+An agent reaches the network through tools that the model chooses to call. With `--model-upstream`, Outfence also sits between the agent and a **local** OpenAI-compatible model server (Ollama, mlx-lm, llama.cpp, vLLM). For every destination it records which source first named the host: the user, the system prompt, a tool definition, a tool result, or **only the model**. A policy can then allow hosts the user named. The model's own output never authorizes a destination, even when a later message repeats it, as when an orchestrator hands its words to a sub-agent. This part of Outfence is a preview.
 
 ```sh
 python3 -m outfence run --policy examples/provenance-policy.json \
@@ -121,7 +144,9 @@ BLOCKED      docs.python.org:443
   tool call: mcp__fetch-mcp__request_url
 ```
 
-Ask the agent to fetch `https://example.com/` instead, and the same policy allows it as `allow_from_user`. A model backdoored to call home when a particular MCP server appears produces exactly this signature: a destination nobody named, right after the tool environment changed. CERT-AgID described such a backdoor in November 2026, and in that case the report adds `trigger?: MCP server … appeared N s before this request`. Matching is textual, and the harness's message roles are trusted. See the [provenance walkthrough](https://github.com/gsaccardi/outfence/blob/main/docs/PROVENANCE-WALKTHROUGH.md) and the [security notes](https://github.com/gsaccardi/outfence/blob/main/SECURITY.md).
+Nothing malicious happened in this run: the user asked for the docs but named no host, so the model picked one. Ask the agent to fetch `https://example.com/` instead, and the same policy allows it as `allow_from_user`. A destination that reaches the model in a web page or another tool result was not named by the user either, so the same policy blocks it. For hosts you expect, add exact `allow` rules.
+
+Your agent receives the tap's address as `OPENAI_BASE_URL`. A client that honors proxy settings reaches it through the proxy, which passes those calls on to the tap. Matching is textual, and the harness's message roles are trusted. A bare name that looks like a file, such as `readme.md` or `install.sh`, names no host. See the [provenance walkthrough](https://github.com/gsaccardi/outfence/blob/main/docs/PROVENANCE-WALKTHROUGH.md) and the [security notes](https://github.com/gsaccardi/outfence/blob/main/SECURITY.md).
 
 ## Read the result
 
@@ -165,4 +190,4 @@ What evidence would your team need before deploying an agent? [Open an issue](ht
 - [Changelog](https://github.com/gsaccardi/outfence/blob/main/CHANGELOG.md)
 - [Brand kit](https://github.com/gsaccardi/outfence/blob/main/brand/README.md)
 
-Licensed under [Apache-2.0](https://github.com/gsaccardi/outfence/blob/main/LICENSE). GitHub: [gsaccardi/outfence](https://github.com/gsaccardi/outfence). PyPI: [outfence](https://pypi.org/project/outfence/). No domain name has been registered yet.
+Maintained by [Giuseppe Saccardi](https://github.com/gsaccardi). Licensed under [Apache-2.0](https://github.com/gsaccardi/outfence/blob/main/LICENSE). GitHub: [gsaccardi/outfence](https://github.com/gsaccardi/outfence). PyPI: [outfence](https://pypi.org/project/outfence/).

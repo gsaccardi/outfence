@@ -9,6 +9,7 @@
   - A URL with a query and no path now requests `/?query`, not `?query`.
   - The response keeps its `Content-Length`, and a body that ends early is recorded as a failed connection.
 - Print "under 0.1 s" when a trigger candidate appeared less than a tenth of a second before the request. It used to print "0 s".
+- Lead the README and the landing page with the provenance demo, and name the maintainer in the README and the package metadata.
 - Document that `example.com` and `www.example.com` count as the same name, and that all conversations in a run share one provenance record.
 - Make the console test pass when `NO_COLOR` is set in the developer's environment.
 
