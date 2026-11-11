@@ -20,6 +20,7 @@ with tempfile.TemporaryDirectory() as temporary:
         ([executable, "check", "policy.json"], 0),
         ([executable, "demo", "--output", "enforce"], 2),
         ([sys.executable, "-m", "outfence", "demo", "--mode", "observe", "--output", "observe"], 2),
+        ([executable, "demo", "--backdoor", "--output", "backdoor"], 2),
     ]
     for command, expected in commands:
         print(f"Smoke: {command}", flush=True)
@@ -44,4 +45,7 @@ with tempfile.TemporaryDirectory() as temporary:
         assert [e["action"] for e in report["events"]] == expected
         assert report["coverage"]["status"] == "proxy_only"
         assert not (root / mode / "report.html").exists()
-print("Installed wheel smoke test passed: init, check, enforce, observe, edited policy.")
+    (event,) = json.loads((root / "backdoor" / "report.json").read_text())["events"]
+    assert (event["action"], event["reason"], event["origin"]) == ("blocked", "model_originated", "model")
+    assert event["trigger"]["servers"] == ["quickfetch-mcp"]
+print("Installed wheel smoke test passed: init, check, enforce, observe, edited policy, backdoor demo.")

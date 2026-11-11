@@ -31,6 +31,9 @@ NAME = re.compile(
 IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 TOOL_CALL = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
 WEB_PORTS = {"http": 80, "https": 443, "ws": 80, "wss": 443}
+# Domain endings that are also common file extensions. A bare name such as readme.md or
+# install.sh is read as a file, so mentioning the file cannot name, or authorize, a host.
+FILE_ENDINGS = frozenset("ac am cc md mk ml mov py rs sh so tf zip".split())
 
 
 def strings(value, depth=0):
@@ -64,8 +67,11 @@ def destinations(text):
             pass
     rest = URL.sub(" ", text)
     for match in [*NAME.finditer(rest), *IPV4.finditer(rest)]:
+        name = match.group(0).lower()
+        if name.rpartition(".")[2] in FILE_ENDINGS:
+            continue  # Only a URL names such a host.
         try:
-            found.append((normalize_host(match.group(0).lower()), None))
+            found.append((normalize_host(name), None))
         except ValueError:
             pass
     return found

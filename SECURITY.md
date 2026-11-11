@@ -1,6 +1,6 @@
 # Security and coverage
 
-Outfence 0.1.0a3 is an experimental **local forward proxy** for trusted development machines. It has not undergone an independent security audit. It is not a sandbox, a DLP system, or a production security boundary.
+Outfence 0.1.0a4 is an experimental **local forward proxy** for trusted development machines. It has not undergone an independent security audit. It is not a sandbox, a DLP system, or a production security boundary.
 
 ## What the alpha does
 
@@ -22,8 +22,10 @@ Before an upstream connection it checks resolved IP addresses and rejects non-pu
 With `--model-upstream`, a second loopback listener forwards non-streaming chat completions to a local model server. It records which source named each destination host. Use it as evidence, not as a boundary.
 
 - **Textual matching:** a host counts as named whenever it appears literally in the model's context, even in an instruction such as "never contact example.com". A host spelled differently is not matched. A host the model named first is never allowed through `allow_from`, even when a later message repeats it, such as a sub-agent's task, a conversation summary or a tool result the model caused. That check is textual too: a model can spell a host differently and have a tool or another agent assemble it. That is why `tool_output` is not allowed by default.
+- **File names and host names overlap:** `readme.md`, `install.sh` and `main.py` are valid domain names, and anyone can register many of them. A bare name ending in `ac`, `am`, `cc`, `md`, `mk`, `ml`, `mov`, `py`, `rs`, `sh`, `so`, `tf` or `zip` is therefore read as a file name and names no host; only a URL names such a host. The list is a heuristic. A file name with another ending that is also a domain ending, such as `requirements.in`, still counts as a host mention. `example.com` and `www.example.com` count as the same name.
+- **One session per run:** every conversation in a run shares one record, so a host one conversation's user named is user-named for the whole run.
 - **The harness is trusted:** message roles come from the harness. Text the tap never saw as model output, such as a reply from a hosted model or tool output placed in a user message, counts as whatever role the harness gives it.
-- **Unauthenticated listener:** the tap binds to 127.0.0.1 without authentication, like the proxy. Other local processes can use it while it is active.
+- **Unauthenticated listener:** the tap binds to 127.0.0.1 without authentication, like the proxy. Other local processes can use it while it is active. The proxy passes requests for the tap's own address on to it, so clients that honor proxy settings can reach it; it passes on no other loopback address.
 - **Inferred attribution:** tool attribution and trigger candidates are inferred from tool-call arguments and changes in the offered tools. They are correlations, not proof that a tool or a server caused a request.
 - **Fails closed:** unreadable model answers are refused, not forwarded. Streaming and other API shapes are rejected.
 - **Limited scope:** traffic that bypasses the tap, such as hosted model APIs or direct calls, is outside provenance coverage.

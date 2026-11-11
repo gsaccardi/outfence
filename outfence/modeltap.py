@@ -4,7 +4,7 @@ import http.client
 import json
 from http.server import BaseHTTPRequestHandler
 
-from .proxy import LoopbackHTTPServer
+from .proxy import MODEL_TIMEOUT, LoopbackHTTPServer
 
 LIMIT = 8 * 1024 * 1024
 CHAT_PATHS = ("/v1/chat/completions", "/chat/completions")
@@ -71,7 +71,7 @@ class TapHandler(BaseHTTPRequestHandler):
 
     def forward(self, method, raw):
         session = self.server.session
-        conn = http.client.HTTPConnection(*self.server.upstream, timeout=300)
+        conn = http.client.HTTPConnection(*self.server.upstream, timeout=MODEL_TIMEOUT)
         try:
             headers = {"Content-Type": "application/json"} if raw is not None else {}
             if self.headers.get("Authorization"):

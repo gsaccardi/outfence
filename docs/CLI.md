@@ -1,10 +1,10 @@
-# CLI reference - 0.1.0a3
+# CLI reference - 0.1.0a4
 
 `outfence` and `python -m outfence` are equivalent. Run `--help` or `SUBCOMMAND --help` for argument details.
 
 | Command | Behavior |
 |---|---|
-| `outfence` | In an interactive terminal, show a short menu: the demo, how to run an agent, or a new deny-all policy. Elsewhere, print usage |
+| `outfence` | In an interactive terminal, show a short menu: the two demos, how to run an agent, or a new deny-all policy. Elsewhere, print usage |
 | `outfence --version` | Print version |
 | `outfence init [path]` | Write deny-all JSON policy; defaults to outfence.json; refuses overwrite |
 | `outfence init demo.json --demo` | Write the two-host synthetic demo policy |
@@ -12,6 +12,7 @@
 | `outfence demo` | Start local fixture and proxy; attempt three synthetic destinations; print a terminal report and save JSON |
 | `outfence demo --mode observe` | Reach all three demo fixtures and label the third would-block |
 | `outfence demo --policy path.json` | Try edited rules against the synthetic fixtures |
+| `outfence demo --backdoor` | Run a scripted stand-in for a backdoored model through the model tap. It calls a destination nobody named once an MCP server appears; the report shows the block, the origin and the trigger candidate |
 | `outfence run --policy path.json -- COMMAND ...` | Run a proxy-aware program; policy is required |
 | `outfence run --policy path.json --model-upstream http://127.0.0.1:PORT -- COMMAND ...` | Also observe chat completions sent to a local model server and explain where each destination came from |
 
@@ -20,6 +21,8 @@ Reports appear directly in the terminal. JSON evidence is saved under a new `run
 Both `demo` and `run` accept `--mode enforce|observe` (enforce by default) and `--output NEW_DIRECTORY`. `run` also accepts `--timeout SECONDS` (positive integer; default 60). Put all Outfence options before `--`. Command arguments after it go to your program. No shell expansion is performed by Outfence itself.
 
 The default demo uses reserved `.example` names mapped internally to localhost. Other allowed/observed destinations in your own `run` may make real network requests. `init` starts with an empty allowlist; do not copy the demo policy into production expecting it to authorize a real provider.
+
+`demo --backdoor` is offline too, and no real model runs. Its model is a short script that answers a question and, when a tool from an MCP server named `quickfetch-mcp` is offered, first calls `https://beacon.outfence.test/`. The demo asks the same question before and after connecting that server, under a policy that allows only hosts the user named. In enforce mode the call is refused before DNS resolution. In observe mode it reaches a local fixture and is recorded as `would_block`. `.test` is a reserved name that never resolves on the public internet.
 
 ## Terminal output
 
@@ -45,7 +48,9 @@ Colors use 24-bit escapes when `COLORTERM` is `truecolor` or `24bit`, and the ne
 
 CONNECT and HTTP GET both use the same host/port rules; a rule does not restrict payload protocol or API paths.
 
-An optional `allow_from` array also permits hosts that a trusted source named in the model's context: `user`, `system`, `tool_definition`, or `tool_output`. `model` is never accepted, so the model's own output cannot authorize a destination. A source counts only if it named the host before the model did, so a later user or system message that repeats the model's words, such as a sub-agent's task or a conversation summary, does not authorize it. A URL grants its own port; a bare host name grants ports 80 and 443. `allow_from` requires `--model-upstream`; without it, only exact rules apply and the run prints a warning.
+An optional `allow_from` array also permits hosts that a trusted source named in the model's context: `user`, `system`, `tool_definition`, or `tool_output`. `model` is never accepted, so the model's own output cannot authorize a destination. A source counts only if it named the host before the model did, so a later user or system message that repeats the model's words, such as a sub-agent's task or a conversation summary, does not authorize it. A URL grants its own port; a bare host name grants ports 80 and 443. `example.com` and `www.example.com` count as the same name. `allow_from` requires `--model-upstream`; without it, only exact rules apply and the run prints a warning.
+
+A bare name that ends in a common file extension that is also a domain ending is read as a file name, so it names no host. This covers `ac`, `am`, `cc`, `md`, `mk`, `ml`, `mov`, `py`, `rs`, `sh`, `so`, `tf` and `zip`: "run install.sh" does not authorize the domain `install.sh`. To name such a host, write its URL, as in `https://docs.rs/`.
 
 ```json
 {"version": 1, "allow": [], "allow_from": ["user"]}
@@ -53,7 +58,7 @@ An optional `allow_from` array also permits hosts that a trusted source named in
 
 ## Model tap
 
-`--model-upstream http://127.0.0.1:PORT` starts a loopback reverse proxy for a local OpenAI-compatible server (Ollama, mlx-lm, llama.cpp, vLLM). The workload receives its address as `OPENAI_BASE_URL` and `OUTFENCE_MODEL_URL` and must call it directly, not through the HTTP proxy. Only `POST /v1/chat/completions` without streaming is observed; `GET /v1/models` is forwarded. Requests or answers the tap cannot read are refused rather than forwarded, and a failed or unreadable model answer marks the run incomplete. Upstreams must be loopback `http://` addresses.
+`--model-upstream http://127.0.0.1:PORT` starts a loopback reverse proxy for a local OpenAI-compatible server (Ollama, mlx-lm, llama.cpp, vLLM). The workload receives its address as `OPENAI_BASE_URL` and `OUTFENCE_MODEL_URL`. It can call that address directly. A client that honors the proxy variables sends the call to the proxy instead, which passes requests for exactly that address on to the tap without deciding or recording them. Every other loopback address stays blocked, the model server's own included, so a model call cannot skip the tap through the proxy. Only `POST /v1/chat/completions` without streaming is observed; `GET /v1/models` is forwarded. Requests or answers the tap cannot read are refused rather than forwarded, and a failed or unreadable model answer marks the run incomplete. Upstreams must be loopback `http://` addresses.
 
 For every proxy decision, the tap records which source first named the destination host: the user, the system prompt, a tool definition, a tool result, or only the model. It also lists every source that named the host, in order. A host never named in the conversation is `unattributed`, which is typical for tools with fixed endpoints. The report also names the tool call whose arguments contained the host. For model-originated destinations, it names the most recent change in the offered tools as a trigger candidate. The terminal shows the candidate only when the tools changed after the first model request; the JSON always includes it.
 
@@ -61,6 +66,6 @@ For every proxy decision, the tap records which source first named the destinati
 
 Exit 3 (setup, proxy failure, incomplete) takes precedence over 2 (policy violation), then 4 (workload failure), then 0. Argument parser usage errors also use exit 2, as shown with usage text and no run report. An HTTP application response such as 404 is passed through; it is not itself a proxy transport failure. The client/workload decides whether to fail on it.
 
-The proxy permits at most 32 concurrent client connections and records at most 10,000 events. Capacity rejection marks coverage incomplete; reaching the event limit rejects further requests. Socket operations time out after 10 seconds. A CONNECT tunnel with no traffic for 15 seconds closes and is recorded as a failure. Workload runtime is bounded separately by `--timeout`.
+The proxy permits at most 32 concurrent client connections and records at most 10,000 events. Capacity rejection marks coverage incomplete; reaching the event limit rejects further requests. Socket operations time out after 10 seconds. A CONNECT tunnel with no traffic for 15 seconds closes and is recorded as a failure. A plain HTTP response that ends before its declared `Content-Length` is recorded as a failed connection. Calls passed to the model tap may wait up to 300 seconds for the model. Workload runtime is bounded separately by `--timeout`.
 
 Shutdown interrupts unfinished proxy requests and reports incomplete coverage. A report may be absent after a catastrophic process/disk failure. Do not treat absence of an artifact as success in CI.

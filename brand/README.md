@@ -91,4 +91,4 @@ Machine-readable colors, typography and tile settings: [tokens.json](tokens.json
 OUTFENCE_FONT_DIR=/path/to/plex python3 scripts/build_brand.py
 ```
 
-The repository and artwork use Apache-2.0, and the brand name remains provisional. The repository is github.com/gsaccardi/outfence. No trademark, domain or package-registry name has been reserved.
+The repository and artwork use Apache-2.0, and the brand name remains provisional. The repository is github.com/gsaccardi/outfence, and the package is `outfence` on PyPI. No trademark has been registered.

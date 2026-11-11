@@ -13,7 +13,14 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from . import __version__, console
-from .demo import Fixture, demo_requests
+from .demo import (
+    BACKDOOR_POLICY,
+    BEACON,
+    Fixture,
+    backdoor_requests,
+    demo_requests,
+    scripted_model,
+)
 from .modeltap import ModelTap
 from .policy import DEMO_POLICY, load_policy
 from .provenance import Session
@@ -93,6 +100,12 @@ def parser():
         p.add_argument("--policy", required=name == "run")
         p.add_argument("--mode", choices=["enforce", "observe"], default="enforce")
         p.add_argument("--output", help="New report directory; existing directories are refused")
+        if name == "demo":
+            p.add_argument(
+                "--backdoor",
+                action="store_true",
+                help="Watch a scripted model call home when a tool appears, and where it is caught",
+            )
         if name == "run":
             p.add_argument(
                 "--timeout", type=int, default=60, help="Workload timeout in seconds (default: 60)"
@@ -118,22 +131,25 @@ def welcome(style):
     print("\n".join(["", *console.banner(style, f"{__version__} alpha", columns), ""]))
     choices = [
         ("1", "Watch Outfence block a request: the offline demo"),
-        ("2", "Run your agent through Outfence"),
-        ("3", "Create a deny-all policy here (outfence.json)"),
+        ("2", "Watch it catch a scripted backdoor: also offline"),
+        ("3", "Run your agent through Outfence"),
+        ("4", "Create a deny-all policy here (outfence.json)"),
         ("q", "Quit"),
     ]
     for key, text in choices:
         print(f"  {style.paint(key, console.ACID, bold=True)}  {text}")
     try:
-        choice = input("\n  Choose 1, 2, 3 or q: ").strip().lower()
+        choice = input("\n  Choose 1, 2, 3, 4 or q: ").strip().lower()
     except (EOFError, KeyboardInterrupt):
         print()
         return 0
     if choice == "1":
         return main(["demo"])
-    if choice == "3":
-        return main(["init"])
     if choice == "2":
+        return main(["demo", "--backdoor"])
+    if choice == "4":
+        return main(["init"])
+    if choice == "3":
         print(
             "\n  Run any proxy-aware command against a policy:\n"
             "    outfence run --policy outfence.json -- python3 my_agent.py\n\n"
@@ -166,7 +182,10 @@ def main(argv=None):
             return 0
         if os.name != "posix":
             raise ValueError("This alpha supports macOS and Linux only.")
-        policy = load_policy(args.policy) if args.policy else DEMO_POLICY
+        backdoor = args.command == "demo" and args.backdoor
+        policy = BACKDOOR_POLICY if backdoor else DEMO_POLICY
+        if args.policy:
+            policy = load_policy(args.policy)
         upstream = None
         if args.command == "run":
             cmd = args.workload[1:] if args.workload[:1] == ["--"] else args.workload
@@ -179,7 +198,7 @@ def main(argv=None):
         )
         # Validate/reserve the output before starting a potentially side-effectful command.
         output.mkdir(parents=True, exist_ok=False, mode=0o700)
-        coverage = "proxy + model tap" if upstream else "proxy only"
+        coverage = "proxy + model tap" if upstream or backdoor else "proxy only"
         columns = shutil.get_terminal_size((80, 24)).columns
         honest = "Direct connections can bypass this proxy. No OS/container isolation."
         if style.enabled:
@@ -190,33 +209,56 @@ def main(argv=None):
         notice(style, honest)
         if args.mode == "observe":
             notice(style, "OBSERVE: out-of-policy proxy requests may connect.", alarm=True)
-        if policy.get("allow_from") and not upstream:
+        if policy.get("allow_from") and not (upstream or backdoor):
             notice(style, "allow_from needs --model-upstream; only exact allow rules apply.", True)
+        if backdoor:
+            notice(style, "Scripted stand-in for a backdoored model. No real model runs.")
         live = console.Live(style, sys.stdout) if style.enabled else None
-        started, incomplete, workload_exit, session = now(), False, 0, None
+        announce = live.decision if live else None
+        tapped = bool(upstream or backdoor)
+        session = Session(on_change=live.change if live else None) if tapped else None
+        started, incomplete, workload_exit = now(), False, 0
         if args.command == "demo":
             fixture = LoopbackHTTPServer(("127.0.0.1", 0), Fixture)
             fixture.received = []
-            with Service(fixture):
-                routes = {
-                    (host, 80): fixture.server_address
-                    for host in ("model.example", "retrieval.example", "telemetry.example")
-                }
-                announce = live.decision if live else None
-                with Service(Proxy(policy, args.mode, routes, on_decision=announce)) as proxy:
-                    try:
+            routes = {
+                (host, 80): fixture.server_address
+                for host in ("model.example", "retrieval.example", "telemetry.example")
+            }
+            routes[(urlsplit(BEACON).hostname, 443)] = fixture.server_address
+            model = scripted_model() if backdoor else None
+            with (
+                Service(fixture),
+                Service(model) if backdoor else nullcontext(),
+                Service(ModelTap(model.server_address, session))
+                if backdoor
+                else nullcontext() as tap,
+                Service(
+                    Proxy(policy, args.mode, routes, session=session, on_decision=announce)
+                ) as proxy,
+            ):
+                try:
+                    if backdoor:
+                        backdoor_requests(tap.server_port, proxy.server_port)
+                    else:
                         demo_requests(proxy.server_port)
-                    except (OSError, KeyboardInterrupt):
-                        incomplete = True
+                except (OSError, KeyboardInterrupt):
+                    incomplete = True
             print(
                 f"  Fixture received {len(fixture.received)} connections (destination-side evidence)."
             )
         else:
-            session = Session(on_change=live.change if live else None) if upstream else None
-            announce = live.decision if live else None
             with (
                 Service(ModelTap(upstream, session)) if upstream else nullcontext() as tap,
-                Service(Proxy(policy, args.mode, session=session, on_decision=announce)) as proxy,
+                Service(
+                    Proxy(
+                        policy,
+                        args.mode,
+                        session=session,
+                        on_decision=announce,
+                        tap=tap.server_address if tap else None,
+                    )
+                ) as proxy,
             ):
                 env = {}
                 if tap is not None:

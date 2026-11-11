@@ -97,7 +97,7 @@ pre { background: var(--code); border: 1px solid var(--line); border-radius: 10p
 .codes dd { margin: 0; color: var(--muted); }
 
 .try { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
-.terminal { background: #171917; color: #FAFAF7; border: 0; padding: 22px 24px; font-size: 14px; }
+.terminal { background: #171917; color: #FAFAF7; border: 0; padding: 22px 24px; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .terminal .prompt { color: #C2C6BC; }
 .terminal .blocked { background: var(--acid); color: #171917; }
 .note code { background: var(--code); padding: 1px 6px; border-radius: 4px; }

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.1.0a4 - fourth alpha
+
+- Add `outfence demo --backdoor`. A scripted stand-in for a backdoored model calls a destination nobody named once an MCP server appears, and the report shows the block, the origin and the trigger candidate. It runs offline and no real model is involved. `outfence` with no arguments lists it in the menu.
+- Pass model calls through the proxy to the model tap. Clients that honor proxy settings send their chat completions to the proxy, which used to refuse them with 501, so `--model-upstream` saw nothing. Requests for the tap's own address are now passed on to it, as plain HTTP or through a tunnel. Every other loopback address stays blocked.
+- Read a bare name with a common file extension as a file, not a host. `readme.md` and `install.sh` are valid domain names, so mentioning a file could authorize a host through `allow_from`. Only a URL names such a host now. This covers `ac`, `am`, `cc`, `md`, `mk`, `ml`, `mov`, `py`, `rs`, `sh`, `so`, `tf` and `zip`.
+- Fix plain HTTP forwarding.
+  - A URL with a query and no path now requests `/?query`, not `?query`.
+  - The response keeps its `Content-Length`, and a body that ends early is recorded as a failed connection.
+- Print "under 0.1 s" when a trigger candidate appeared less than a tenth of a second before the request. It used to print "0 s".
+- Lead the README and the landing page with the provenance demo, and name the maintainer in the README and the package metadata.
+- Document that `example.com` and `www.example.com` count as the same name, and that all conversations in a run share one provenance record.
+- Make the console test pass when `NO_COLOR` is set in the developer's environment.
+
 ## 0.1.0a3 - third alpha
 
 - Attribute each destination to the source that named it first, and let `allow_from` grant a host only through a source that named it before the model did. A later message that repeats the model's words, such as a sub-agent's task or a conversation summary, no longer authorizes the destination. Events add `named_by`, the sources that named the host in order.

@@ -8,9 +8,11 @@ This example runs a small MCP agent with a local OpenAI-compatible model, throug
 - a tool result
 - **only the model**
 
-Why it matters: in November 2026, CERT-AgID published "La backdoor attende il suo turno". They showed an open-weight model fine-tuned to make an unrequested HTTPS call as soon as an MCP server with a specific name was connected. The answer stayed correct, and the call was visible only in tool logs. A destination that only the model named, right after a new server appeared, is that signature.
+Why it matters: in November 2026, CERT-AGID published "La backdoor attende il suo turno". They showed an open-weight model fine-tuned to make an unrequested HTTPS call as soon as an MCP server with a specific name was connected. The answer stayed correct, and the call was visible only in tool logs. A destination that only the model named, right after a new server appeared, is that signature.
 
 No API key is needed. The default example uses Ollama's OpenAI-compatible endpoint. The allowed fetch needs internet access.
+
+No model at hand? `outfence demo --backdoor` shows that signature offline in a few seconds. It runs a scripted stand-in for a backdoored model through the same model tap and prints the same report.
 
 ## Prerequisites
 
@@ -78,7 +80,7 @@ Model tap: 2 chat requests | 0 tool calls | 0 rejected | 0 errors
 No proxy requests observed. This does not prove there was no network activity.
 ```
 
-If a model fetched an unrequested destination after the change, the blocked event would end with a line like `trigger?: MCP server quickfetch-mcp appeared 1.3 s before this request`. The deterministic tests reproduce this with a scripted model; see `tests/test_provenance.py`.
+If a model fetched an unrequested destination after the change, the blocked event would end with a line like `trigger?: MCP server quickfetch-mcp appeared 1.3 s before this request`. `outfence demo --backdoor` and the deterministic tests reproduce this with a scripted model; see `outfence/demo.py` and `tests/test_provenance.py`.
 
 ## What is observed, decided or missed
 
@@ -91,7 +93,7 @@ If a model fetched an unrequested destination after the change, the blocked even
 | Streaming responses, hosted model APIs, direct sockets | Outside coverage |
 | Which process made a connection | Inferred from tool-call arguments, not authenticated |
 
-The agent calls the tap directly over loopback, and the MCP server inherits the proxy settings. Tool results are treated as untrusted data. The example fails safely on unknown tools and invalid arguments, and stops after four model calls.
+The agent calls the tap directly over loopback, and the MCP server inherits the proxy settings. An agent whose HTTP client honors proxy settings reaches the tap through the proxy instead, which passes those calls on. Tool results are treated as untrusted data. The example fails safely on unknown tools and invalid arguments, and stops after four model calls.
 
 ## Verified results
 
